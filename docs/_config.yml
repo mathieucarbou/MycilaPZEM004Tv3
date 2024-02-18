@@ -1,0 +1,7 @@
+# bundle exec jekyll serve --host=0.0.0.0
+
+title: MycilaPZEM004Tv3
+description: Arduino / ESP32 library for the PZEM-004T v3 Power and Energy monitor
+remote_theme: pages-themes/cayman@v0.2.0
+plugins:
+  - jekyll-remote-theme

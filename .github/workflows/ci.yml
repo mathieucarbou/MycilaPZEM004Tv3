@@ -1,0 +1,149 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+
+name: Continuous Integration
+
+on:
+  workflow_dispatch:
+  push:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cpplint:
+    name: cpplint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache
+        uses: actions/cache@v4
+        with:
+          key: ${{ runner.os }}-cpplint
+          path: ~/.cache/pip
+
+      - name: Pyhton
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: cpplint
+        run: |
+          python -m pip install --upgrade pip
+          pip install --upgrade cpplint
+          cpplint \
+            --repository=. \
+            --recursive \
+            --filter=-whitespace/line_length,-whitespace/braces,-whitespace/comments,-runtime/indentation_namespace,-whitespace/indent,-readability/braces,-whitespace/newline,-readability/todo,-build/c++11 \
+            src
+
+  arduino:
+    name: Arduino
+    needs: cpplint
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - core: esp32:esp32
+            board: esp32:esp32:esp32
+            eeprom: true
+            softwareserial: false
+            index_url: https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install arduino-cli
+        run: curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR=/usr/local/bin sh
+
+      - name: Update core index
+        run: arduino-cli core update-index --additional-urls "${{ matrix.index_url }}"
+
+      - name: Install core
+        run: arduino-cli core install --additional-urls "${{ matrix.index_url }}" ${{ matrix.core }}
+
+      - name: Install ArduinoJson
+        run: arduino-cli lib install ArduinoJson
+
+      - name: Build Read
+        run: arduino-cli compile --library . --warnings all -b ${{ matrix.board }} "examples/Read/Read.ino" --build-property build.extra_flags=-DMYCILA_PZEM_JSON_SUPPORT
+
+      - name: Build ReadAsync
+        run: arduino-cli compile --library . --warnings all -b ${{ matrix.board }} "examples/ReadAsync/ReadAsync.ino" --build-property build.extra_flags=-DMYCILA_PZEM_JSON_SUPPORT
+
+      - name: Build ReadAsyncMulti
+        run: arduino-cli compile --library . --warnings all -b ${{ matrix.board }} "examples/ReadAsyncMulti/ReadAsyncMulti.ino" --build-property build.extra_flags=-DMYCILA_PZEM_JSON_SUPPORT
+
+      - name: Build EnergyReset
+        run: arduino-cli compile --library . --warnings all -b ${{ matrix.board }} "examples/EnergyReset/EnergyReset.ino" --build-property build.extra_flags=-DMYCILA_PZEM_JSON_SUPPORT
+
+      - name: Build EnergyResetAsync
+        run: arduino-cli compile --library . --warnings all -b ${{ matrix.board }} "examples/EnergyResetAsync/EnergyResetAsync.ino" --build-property build.extra_flags=-DMYCILA_PZEM_JSON_SUPPORT
+
+      - name: Build SetAddress
+        run: arduino-cli compile --library . --warnings all -b ${{ matrix.board }} "examples/SetAddress/SetAddress.ino"
+
+      - name: Build Search
+        run: arduino-cli compile --library . --warnings all -b ${{ matrix.board }} "examples/Search/Search.ino"
+
+  platformio:
+    name: PlatformIO
+    needs: cpplint
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: espressif32
+            board: esp32dev
+            eeprom: true
+            softwareserial: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            ~/.cache/pip
+          key: ${{ runner.os }}-platformio
+
+      - name: Set up Python 3.x
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Install platform "${{ matrix.platform }}"
+        run: platformio platform install ${{ matrix.platform }}
+
+      - name: Build Read
+        run: PLATFORMIO_BUILD_FLAGS="-Wall -Wextra -DMYCILA_PZEM_JSON_SUPPORT" platformio ci "examples/Read/Read.ino" -l '.' --project-option="lib_deps=bblanchon/ArduinoJson" -b ${{ matrix.board }}
+
+      - name: Build ReadAsync
+        run: PLATFORMIO_BUILD_FLAGS="-Wall -Wextra -DMYCILA_PZEM_JSON_SUPPORT" platformio ci "examples/ReadAsync/ReadAsync.ino" -l '.' --project-option="lib_deps=bblanchon/ArduinoJson" -b ${{ matrix.board }}
+
+      - name: Build ReadAsyncMulti
+        run: PLATFORMIO_BUILD_FLAGS="-Wall -Wextra -DMYCILA_PZEM_JSON_SUPPORT" platformio ci "examples/ReadAsyncMulti/ReadAsyncMulti.ino" -l '.' --project-option="lib_deps=bblanchon/ArduinoJson" -b ${{ matrix.board }}
+
+      - name: Build EnergyReset
+        run: PLATFORMIO_BUILD_FLAGS="-Wall -Wextra -DMYCILA_PZEM_JSON_SUPPORT" platformio ci "examples/EnergyReset/EnergyReset.ino" -l '.' --project-option="lib_deps=bblanchon/ArduinoJson" -b ${{ matrix.board }}
+
+      - name: Build EnergyResetAsync
+        run: PLATFORMIO_BUILD_FLAGS="-Wall -Wextra -DMYCILA_PZEM_JSON_SUPPORT" platformio ci "examples/EnergyResetAsync/EnergyResetAsync.ino" -l '.' --project-option="lib_deps=bblanchon/ArduinoJson" -b ${{ matrix.board }}
+
+      - name: Build SetAddress
+        run: PLATFORMIO_BUILD_FLAGS="-Wall -Wextra" platformio ci "examples/SetAddress/SetAddress.ino" -l '.' -b ${{ matrix.board }}
+
+      - name: Build Search
+        run: PLATFORMIO_BUILD_FLAGS="-Wall -Wextra" platformio ci "examples/Search/Search.ino" -l '.' -b ${{ matrix.board }}

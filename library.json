@@ -1,0 +1,31 @@
+{
+  "name": "MycilaPZEM004Tv3",
+  "version": "1.0.0",
+  "description": "Arduino / ESP32 library for the PZEM-004T v3 Power and Energy monitor",
+  "homepage": "https://github.com/mathieucarbou/MycilaPZEM004Tv3",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mathieucarbou/MycilaPZEM004Tv3.git"
+  },
+  "authors": {
+    "name": "Mathieu Carbou",
+    "url": "https://github.com/mathieucarbou"
+  },
+  "license": "MIT",
+  "frameworks": "arduino",
+  "platforms": [
+    "espressif32"
+  ],
+  "headers": "MycilaPZEM004Tv3.h",
+  "export": {
+    "include": [
+      "examples",
+      "src",
+      "library.json",
+      "library.properties",
+      "LICENSE",
+      "platformio.ini",
+      "README.md"
+    ]
+  }
+}
