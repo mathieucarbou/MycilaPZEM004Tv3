@@ -86,8 +86,10 @@ namespace Mycila {
       float getCurrent() const { return _current; }
       float getEnergy() const { return _energy; }
       float getFrequency() const { return _frequency; }
+      // note :this is the active power, not the apparent power
       float getPower() const { return _power; }
       float getPowerFactor() const { return _powerFactor; }
+      float getApparentPower() const { return _power / _powerFactor; }
       float getVoltage() const { return _voltage; }
 
       // get the uptime in milliseconds of the last successful read
