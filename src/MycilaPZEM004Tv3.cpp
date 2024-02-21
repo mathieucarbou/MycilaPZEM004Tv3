@@ -118,12 +118,13 @@ void Mycila::PZEM::end() {
       // PZEM takes a few ms to finish a read
       delay(50);
     }
-    current = 0;
-    energy = 0;
-    frequency = 0;
-    power = 0;
-    powerFactor = 0;
-    voltage = 0;
+    _current = 0;
+    _energy = 0;
+    _frequency = 0;
+    _power = 0;
+    _powerFactor = 0;
+    _voltage = 0;
+    _lastReadSuccess = 0;
     _serial->end();
   }
 }
@@ -145,31 +146,33 @@ bool Mycila::PZEM::read() {
   _mutex.unlock();
 
   if (!count) {
-    current = 0;
-    frequency = 0;
-    power = 0;
-    powerFactor = 0;
-    voltage = 0;
+    _current = 0;
+    _frequency = 0;
+    _power = 0;
+    _powerFactor = 0;
+    _voltage = 0;
+    _lastReadSuccess = 0;
     // timeout or no electricity
     return false;
   }
 
   if (count != PZEM_READ_RESPONSE_SIZE) {
-    current = 0;
-    frequency = 0;
-    power = 0;
-    powerFactor = 0;
-    voltage = 0;
+    _current = 0;
+    _frequency = 0;
+    _power = 0;
+    _powerFactor = 0;
+    _voltage = 0;
+    _lastReadSuccess = 0;
     ESP_LOGD(TAG, "Read failed: %d", count);
     return false;
   }
 
-  voltage = ((uint32_t)buffer[3] << 8 | (uint32_t)buffer[4]) / 10.0;                                                              // Raw voltage in 0.1V
-  current = ((uint32_t)buffer[5] << 8 | (uint32_t)buffer[6] | (uint32_t)buffer[7] << 24 | (uint32_t)buffer[8] << 16) / 1000.0;    // Raw current in 0.001A
-  power = ((uint32_t)buffer[9] << 8 | (uint32_t)buffer[10] | (uint32_t)buffer[11] << 24 | (uint32_t)buffer[12] << 16) / 10.0;     // Raw power in 0.1W
-  energy = ((uint32_t)buffer[13] << 8 | (uint32_t)buffer[14] | (uint32_t)buffer[15] << 24 | (uint32_t)buffer[16] << 16) / 1000.0; // Raw Energy in 1Wh
-  frequency = ((uint32_t)buffer[17] << 8 | (uint32_t)buffer[18]) / 10.0;                                                          // Raw Frequency in 0.1Hz
-  powerFactor = ((uint32_t)buffer[19] << 8 | (uint32_t)buffer[20]) / 100.0;                                                       // Raw pf in 0.01
+  _voltage = ((uint32_t)buffer[3] << 8 | (uint32_t)buffer[4]) / 10.0;                                                              // Raw voltage in 0.1V
+  _current = ((uint32_t)buffer[5] << 8 | (uint32_t)buffer[6] | (uint32_t)buffer[7] << 24 | (uint32_t)buffer[8] << 16) / 1000.0;    // Raw current in 0.001A
+  _power = ((uint32_t)buffer[9] << 8 | (uint32_t)buffer[10] | (uint32_t)buffer[11] << 24 | (uint32_t)buffer[12] << 16) / 10.0;     // Raw power in 0.1W
+  _energy = ((uint32_t)buffer[13] << 8 | (uint32_t)buffer[14] | (uint32_t)buffer[15] << 24 | (uint32_t)buffer[16] << 16) / 1000.0; // Raw Energy in 1Wh
+  _frequency = ((uint32_t)buffer[17] << 8 | (uint32_t)buffer[18]) / 10.0;                                                          // Raw Frequency in 0.1Hz
+  _powerFactor = ((uint32_t)buffer[19] << 8 | (uint32_t)buffer[20]) / 100.0;                                                       // Raw pf in 0.01
 
   _lastReadSuccess = millis();
   return true;
@@ -326,13 +329,13 @@ size_t Mycila::PZEM::search(uint8_t* addresses, const size_t maxCount) {
 #ifdef MYCILA_PZEM_JSON_SUPPORT
 void Mycila::PZEM::toJson(const JsonObject& root) const {
   root["address"] = _address;
-  root["current"] = current;
+  root["current"] = _current;
   root["enabled"] = _enabled;
-  root["energy"] = energy;
-  root["frequency"] = frequency;
-  root["power_factor"] = powerFactor;
-  root["power"] = power;
-  root["voltage"] = voltage;
+  root["energy"] = _energy;
+  root["frequency"] = _frequency;
+  root["power_factor"] = _powerFactor;
+  root["power"] = _power;
+  root["voltage"] = _voltage;
   root["time"] = _lastReadSuccess;
 }
 #endif

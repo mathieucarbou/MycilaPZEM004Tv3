@@ -83,23 +83,23 @@ namespace Mycila {
       uint8_t getAddress() const { return _address; }
       bool isEnabled() const { return _enabled; }
 
-      float getCurrent() const { return current; }
-      float getEnergy() const { return energy; }
-      float getFrequency() const { return frequency; }
-      float getPower() const { return power; }
-      float getPowerFactor() const { return powerFactor; }
-      float getVoltage() const { return voltage; }
+      float getCurrent() const { return _current; }
+      float getEnergy() const { return _energy; }
+      float getFrequency() const { return _frequency; }
+      float getPower() const { return _power; }
+      float getPowerFactor() const { return _powerFactor; }
+      float getVoltage() const { return _voltage; }
 
       // get the uptime in milliseconds of the last successful read
       uint32_t getTime() const { return _lastReadSuccess; }
 
     private:
-      volatile float current = 0;   // A
-      volatile float energy = 0;    // kWh
-      volatile float frequency = 0; // Hz
-      volatile float power = 0;     // W
-      volatile float powerFactor = 0;
-      volatile float voltage = 0; // V
+      volatile float _current = 0;   // A
+      volatile float _energy = 0;    // kWh
+      volatile float _frequency = 0; // Hz
+      volatile float _power = 0;     // W
+      volatile float _powerFactor = 0;
+      volatile float _voltage = 0; // V
 
     private:
       gpio_num_t _pinRX = GPIO_NUM_NC;
