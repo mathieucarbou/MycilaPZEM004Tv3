@@ -119,7 +119,6 @@ void Mycila::PZEM::end() {
       delay(50);
     }
     _current = 0;
-    _energy = 0;
     _frequency = 0;
     _power = 0;
     _powerFactor = 0;
