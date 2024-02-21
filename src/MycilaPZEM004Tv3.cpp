@@ -123,7 +123,6 @@ void Mycila::PZEM::end() {
     _power = 0;
     _powerFactor = 0;
     _voltage = 0;
-    _lastReadSuccess = 0;
     _serial->end();
   }
 }
@@ -150,7 +149,6 @@ bool Mycila::PZEM::read() {
     _power = 0;
     _powerFactor = 0;
     _voltage = 0;
-    _lastReadSuccess = 0;
     // timeout or no electricity
     return false;
   }
@@ -161,7 +159,6 @@ bool Mycila::PZEM::read() {
     _power = 0;
     _powerFactor = 0;
     _voltage = 0;
-    _lastReadSuccess = 0;
     ESP_LOGD(TAG, "Read failed: %d", count);
     return false;
   }
