@@ -43,6 +43,9 @@
 
 #define MYCILA_PZEM_INVALID_ADDRESS 0x00
 
+// 0x01 to 0xF7 (custom addresses) and 0xF8 (default address)
+#define MYCILA_PZEM_MAX_ADDRESS_COUNT 0xF8
+
 namespace Mycila {
   class PZEM {
     public:
