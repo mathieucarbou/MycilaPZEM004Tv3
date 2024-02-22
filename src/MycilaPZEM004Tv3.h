@@ -37,6 +37,10 @@
 #define MYCILA_PZEM_DEFAULT_ADDRESS 0xF8
 #endif
 
+#ifndef MYCILA_PZEM_ASYNC_MAX_INSTANCES
+#define MYCILA_PZEM_ASYNC_MAX_INSTANCES 4
+#endif
+
 #define MYCILA_PZEM_INVALID_ADDRESS 0x00
 
 namespace Mycila {
@@ -51,9 +55,7 @@ namespace Mycila {
                  const uint8_t pzemRXPin,
                  const uint8_t pzemTXPin,
                  const uint8_t address = MYCILA_PZEM_DEFAULT_ADDRESS,
-                 const bool async = false,
-                 const uint8_t core = MYCILA_PZEM_ASYNC_CORE,
-                 const uint32_t stackSize = MYCILA_PZEM_ASYNC_STACK_SIZE);
+                 const bool async = false);
 
       void end();
 
@@ -111,22 +113,27 @@ namespace Mycila {
       gpio_num_t _pinTX = GPIO_NUM_NC;
       HardwareSerial* _serial = nullptr;
       uint32_t _lastReadSuccess = 0;
-      TaskHandle_t _taskHandle;
       volatile bool _enabled = false;
       volatile uint8_t _address = MYCILA_PZEM_DEFAULT_ADDRESS;
-      std::timed_mutex _mutex;
 
     private:
-      void _openSerial();
-      size_t _drop();
-      bool _canRead();
-      size_t _timedRead(uint8_t* buffer, size_t length);
-      bool _sendCmd8(uint8_t cmd, uint16_t rAddr, uint16_t val, bool check = false, uint16_t slave_addr = 0xFFFF);
+      static void _openSerial(HardwareSerial* serial, const uint8_t pzemRXPin, const uint8_t pzemTXPin);
+      static size_t _drop(HardwareSerial* serial);
+      static bool _canRead(HardwareSerial* serial, uint16_t slaveAddr);
+      static size_t _timedRead(HardwareSerial* serial, uint8_t* buffer, size_t length);
+      static bool _sendCmd8(HardwareSerial* serial, uint8_t cmd, uint16_t rAddr, uint16_t val, bool check, uint16_t slaveAddr);
 
     private:
-      static void _pzemTask(void* pvParameters);
       static void _crcSet(uint8_t* buf, uint16_t len);
       static bool _crcCheck(const uint8_t* buf, uint16_t len);
       static uint16_t _crc16(const uint8_t* data, uint16_t len);
+
+    private:
+      static TaskHandle_t _taskHandle;
+      static PZEM* _instances[MYCILA_PZEM_ASYNC_MAX_INSTANCES];
+      static bool _add(PZEM* pzem);
+      static void _remove(PZEM* pzem);
+      static void _pzemTask(void* pvParameters);
+      static std::timed_mutex _mutex;
   };
 } // namespace Mycila

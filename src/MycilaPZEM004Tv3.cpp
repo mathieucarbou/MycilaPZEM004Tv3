@@ -54,13 +54,15 @@ static const uint16_t crcTable[] PROGMEM = {
   0X4400, 0X84C1, 0X8581, 0X4540, 0X8701, 0X47C0, 0X4680, 0X8641,
   0X8201, 0X42C0, 0X4380, 0X8341, 0X4100, 0X81C1, 0X8081, 0X4040};
 
+TaskHandle_t Mycila::PZEM::_taskHandle = NULL;
+Mycila::PZEM* Mycila::PZEM::_instances[MYCILA_PZEM_ASYNC_MAX_INSTANCES];
+std::timed_mutex Mycila::PZEM::_mutex;
+
 void Mycila::PZEM::begin(HardwareSerial* serial,
                          const uint8_t pzemRXPin,
                          const uint8_t pzemTXPin,
                          const uint8_t address,
-                         const bool async,
-                         const uint8_t core,
-                         const uint32_t stackSize) {
+                         const bool async) {
   if (_enabled)
     return;
 
@@ -98,13 +100,16 @@ void Mycila::PZEM::begin(HardwareSerial* serial,
   _serial = serial;
   _address = address;
 
-  _openSerial();
+  if (async) {
+    if (!_add(this))
+      return;
 
-  if (!_canRead()) {
-    ESP_LOGW(TAG, "Unable to read PZEM at address 0x%02X. Please verify that the device is powered and that its address is correctly set.", address);
+  } else {
+    _openSerial(serial, pzemRXPin, pzemTXPin);
+    if (!_canRead(serial, address)) {
+      ESP_LOGW(TAG, "Unable to read PZEM at address 0x%02X. Please verify that the device is powered and that its address is correctly set.", address);
+    }
   }
-
-  assert(!async || xTaskCreateUniversal(_pzemTask, "pzemTask", stackSize, this, MYCILA_PZEM_ASYNC_PRIORITY, &_taskHandle, core) == pdPASS);
 
   _enabled = true;
 }
@@ -113,11 +118,9 @@ void Mycila::PZEM::end() {
   if (_enabled) {
     ESP_LOGI(TAG, "Disable PZEM at address 0x%02X...", _address);
     _enabled = false;
+    _remove(this);
+    delay(MYCILA_PZEM_READ_TIMEOUT_MS);
     _address = MYCILA_PZEM_DEFAULT_ADDRESS;
-    while (_taskHandle != NULL) {
-      // PZEM takes a few ms to finish a read
-      delay(50);
-    }
     _current = 0;
     _frequency = 0;
     _power = 0;
@@ -135,10 +138,10 @@ bool Mycila::PZEM::read() {
     return false;
   }
 
-  _sendCmd8(PZEM_CMD_RIR, 0x00, 0x0A, false);
+  _sendCmd8(_serial, PZEM_CMD_RIR, 0x00, 0x0A, false, _address);
 
   uint8_t buffer[PZEM_READ_RESPONSE_SIZE];
-  const size_t count = _timedRead(buffer, PZEM_READ_RESPONSE_SIZE);
+  const size_t count = _timedRead(_serial, buffer, PZEM_READ_RESPONSE_SIZE);
 
   _mutex.unlock();
 
@@ -191,7 +194,7 @@ bool Mycila::PZEM::resetEnergy() {
   _serial->write(request, 4);
 
   uint8_t response[PZEM_RESET_RESPONSE_SIZE];
-  const size_t count = _timedRead(response, PZEM_RESET_RESPONSE_SIZE);
+  const size_t count = _timedRead(_serial, response, PZEM_RESET_RESPONSE_SIZE);
 
   _mutex.unlock();
 
@@ -225,7 +228,7 @@ bool Mycila::PZEM::setAddress(const uint8_t address) {
 
   ESP_LOGI(TAG, "Set address to 0x%02X...", address);
 
-  const bool success = _sendCmd8(PZEM_CMD_WSR, PZEM_WREG_ADDR, address, true);
+  const bool success = _sendCmd8(_serial, PZEM_CMD_WSR, PZEM_WREG_ADDR, address, true, _address);
 
   if (success) {
     _address = address;
@@ -251,10 +254,10 @@ uint8_t Mycila::PZEM::readAddress(bool update) {
 
   uint8_t address = MYCILA_PZEM_INVALID_ADDRESS;
 
-  _sendCmd8(PZEM_CMD_RHR, PZEM_WREG_ADDR, 0x01, false);
+  _sendCmd8(_serial, PZEM_CMD_RHR, PZEM_WREG_ADDR, 0x01, false, _address);
 
   uint8_t buffer[PZEM_ADDR_RESPONSE_SIZE];
-  const size_t count = _timedRead(buffer, PZEM_ADDR_RESPONSE_SIZE);
+  const size_t count = _timedRead(_serial, buffer, PZEM_ADDR_RESPONSE_SIZE);
 
   if (count == PZEM_ADDR_RESPONSE_SIZE) {
     address = ((uint32_t)buffer[3] << 8 | (uint32_t)buffer[4]);
@@ -296,8 +299,8 @@ size_t Mycila::PZEM::search(uint8_t* addresses, const size_t maxCount) {
       break;
     }
 
-    _sendCmd8(PZEM_CMD_RIR, 0x00, 0x01, false, address);
-    const size_t nRead = _timedRead(buffer, PZEM_ADDR_RESPONSE_SIZE);
+    _sendCmd8(_serial, PZEM_CMD_RIR, 0x00, 0x01, false, address);
+    const size_t nRead = _timedRead(_serial, buffer, PZEM_ADDR_RESPONSE_SIZE);
 
     _mutex.unlock();
 
@@ -335,20 +338,9 @@ void Mycila::PZEM::toJson(const JsonObject& root) const {
 }
 #endif
 
-void Mycila::PZEM::_openSerial() {
-  _serial->begin(PZEM_BAUD_RATE, SERIAL_8N1, _pinTX, _pinRX);
-  _serial->setTimeout(MYCILA_PZEM_READ_TIMEOUT_MS);
-  while (!_serial)
-    yield();
-  _serial->flush();
-  _drop();
-  while (!_serial->availableForWrite())
-    yield();
-}
-
-size_t Mycila::PZEM::_timedRead(uint8_t* buffer, size_t length) {
+size_t Mycila::PZEM::_timedRead(HardwareSerial* serial, uint8_t* buffer, size_t length) {
   // const uint32_t now = millis();
-  const size_t count = _serial->readBytes(buffer, length) + _drop();
+  const size_t count = serial->readBytes(buffer, length) + _drop(serial);
   if (count == 0) {
     // ESP_LOGD(TAG, "Read timeout");
     return count;
@@ -361,12 +353,12 @@ size_t Mycila::PZEM::_timedRead(uint8_t* buffer, size_t length) {
   return count;
 }
 
-size_t Mycila::PZEM::_drop() {
+size_t Mycila::PZEM::_drop(HardwareSerial* serial) {
   size_t count = 0;
   // Serial.printf("Drop: ");
-  while (_serial->available()) {
+  while (serial->available()) {
     // Serial.printf("0x%02X", _serial->read());
-    _serial->read();
+    serial->read();
     count++;
   }
   // if (count > 0)
@@ -374,23 +366,17 @@ size_t Mycila::PZEM::_drop() {
   return count;
 }
 
-bool Mycila::PZEM::_canRead() {
-  _sendCmd8(PZEM_CMD_RIR, 0x00, 0x0A, false);
+bool Mycila::PZEM::_canRead(HardwareSerial* serial, uint16_t slaveAddr) {
+  _sendCmd8(serial, PZEM_CMD_RIR, 0x00, 0x0A, false, slaveAddr);
   uint8_t buffer[PZEM_READ_RESPONSE_SIZE];
-  return _timedRead(buffer, PZEM_READ_RESPONSE_SIZE) == PZEM_READ_RESPONSE_SIZE;
+  return _timedRead(serial, buffer, PZEM_READ_RESPONSE_SIZE) == PZEM_READ_RESPONSE_SIZE;
 }
 
-bool Mycila::PZEM::_sendCmd8(uint8_t cmd, uint16_t rAddr, uint16_t val, bool check, uint16_t slave_addr) {
+bool Mycila::PZEM::_sendCmd8(HardwareSerial* serial, uint8_t cmd, uint16_t rAddr, uint16_t val, bool check, uint16_t slaveAddr) {
   uint8_t sendBuffer[8]; // Send buffer
 
-  if ((slave_addr == 0xFFFF) ||
-      (slave_addr < 0x01) ||
-      (slave_addr > 0xF7)) {
-    slave_addr = _address;
-  }
-
-  sendBuffer[0] = slave_addr; // Set slave address
-  sendBuffer[1] = cmd;        // Set command
+  sendBuffer[0] = slaveAddr; // Set slave address
+  sendBuffer[1] = cmd;       // Set command
 
   sendBuffer[2] = (rAddr >> 8) & 0xFF; // Set high byte of register address
   sendBuffer[3] = (rAddr) & 0xFF;      // Set low byte =//=
@@ -400,13 +386,13 @@ bool Mycila::PZEM::_sendCmd8(uint8_t cmd, uint16_t rAddr, uint16_t val, bool che
 
   _crcSet(sendBuffer, 8); // Set CRC of frame
 
-  _serial->write(sendBuffer, 8); // send frame
-  _serial->flush();
+  serial->write(sendBuffer, 8); // send frame
+  serial->flush();
 
   if (check) {
-    uint8_t respBuffer[8];            // Response buffer (only used when check is true)
-    if (!_timedRead(respBuffer, 8)) { // if check enabled, read the response
-      return false;                   // timeout
+    uint8_t respBuffer[8];                    // Response buffer (only used when check is true)
+    if (!_timedRead(serial, respBuffer, 8)) { // if check enabled, read the response
+      return false;                           // timeout
     }
     // Check if response is same as send
     for (uint8_t i = 0; i < 8; i++) {
@@ -417,18 +403,6 @@ bool Mycila::PZEM::_sendCmd8(uint8_t cmd, uint16_t rAddr, uint16_t val, bool che
   }
 
   return true;
-}
-
-void Mycila::PZEM::_pzemTask(void* params) {
-  PZEM* pzem = reinterpret_cast<PZEM*>(params);
-  while (pzem->_enabled) {
-    if (pzem->read())
-      yield();
-    else
-      delay(MYCILA_PZEM_READ_TIMEOUT_MS);
-  }
-  pzem->_taskHandle = NULL;
-  vTaskDelete(NULL);
 }
 
 void Mycila::PZEM::_crcSet(uint8_t* buf, uint16_t len) {
@@ -455,4 +429,92 @@ uint16_t Mycila::PZEM::_crc16(const uint8_t* data, uint16_t len) {
     crc ^= (uint16_t)pgm_read_word(&crcTable[nTemp]);
   }
   return crc;
+}
+
+bool Mycila::PZEM::_add(PZEM* pzem) {
+  for (size_t i = 0; i < MYCILA_PZEM_ASYNC_MAX_INSTANCES; i++) {
+    if (_instances[i] == nullptr) {
+      ESP_LOGD(TAG, "Adding PZEM instance at address 0x%02X to async task...", pzem->_address);
+
+      if (_taskHandle == NULL) {
+        _openSerial(pzem->_serial, pzem->_pinRX, pzem->_pinTX);
+
+        if (!_canRead(pzem->_serial, pzem->_address)) {
+          ESP_LOGW(TAG, "Unable to read PZEM at address 0x%02X. Please verify that the device is powered and that its address is correctly set.", pzem->_address);
+        }
+
+        _instances[i] = pzem;
+
+        ESP_LOGD(TAG, "Creating async task 'pzemTask'...");
+        if (xTaskCreateUniversal(_pzemTask, "pzemTask", MYCILA_PZEM_ASYNC_STACK_SIZE, nullptr, MYCILA_PZEM_ASYNC_PRIORITY, &_taskHandle, MYCILA_PZEM_ASYNC_CORE) == pdPASS) {
+          return true;
+        } else {
+          _instances[i] = nullptr;
+          ESP_LOGE(TAG, "Failed to create task 'pzemTask'");
+          return false;
+        }
+
+      } else {
+        if (!_canRead(pzem->_serial, pzem->_address)) {
+          ESP_LOGW(TAG, "Unable to read PZEM at address 0x%02X. Please verify that the device is powered and that its address is correctly set.", pzem->_address);
+        }
+        _instances[i] = pzem;
+      }
+
+      return true;
+    }
+  }
+  return false;
+}
+
+void Mycila::PZEM::_remove(PZEM* pzem) {
+  // check for remaining tasks
+  bool remaining = false;
+  for (size_t i = 0; i < MYCILA_PZEM_ASYNC_MAX_INSTANCES; i++) {
+    if (_instances[i] != nullptr && _instances[i] != pzem) {
+      remaining = true;
+      break;
+    }
+  }
+  // first delete  the task if no remaining instances
+  if (!remaining && _taskHandle != NULL) {
+    ESP_LOGD(TAG, "Deleting async task 'pzemTask'...");
+    vTaskDelete(_taskHandle);
+    _taskHandle = NULL;
+  }
+  // in any case, remove the instance from the list
+  for (size_t i = 0; i < MYCILA_PZEM_ASYNC_MAX_INSTANCES; i++) {
+    if (_instances[i] == pzem) {
+      _instances[i] = nullptr;
+      break;
+    }
+  }
+}
+
+void Mycila::PZEM::_pzemTask(void* params) {
+  while (true) {
+    bool read = false;
+    for (size_t i = 0; i < MYCILA_PZEM_ASYNC_MAX_INSTANCES; i++) {
+      if (_instances[i] != nullptr) {
+        read |= _instances[i]->read();
+        yield();
+      }
+    }
+    if (!read)
+      delay(MYCILA_PZEM_READ_TIMEOUT_MS);
+  }
+  _taskHandle = NULL;
+  vTaskDelete(NULL);
+}
+
+void Mycila::PZEM::_openSerial(HardwareSerial* serial, const uint8_t pzemRXPin, const uint8_t pzemTXPin) {
+  ESP_LOGD(TAG, "Open serial...");
+  serial->begin(PZEM_BAUD_RATE, SERIAL_8N1, pzemTXPin, pzemRXPin);
+  serial->setTimeout(MYCILA_PZEM_READ_TIMEOUT_MS);
+  while (!serial)
+    yield();
+  serial->flush();
+  _drop(serial);
+  while (!serial->availableForWrite())
+    yield();
 }

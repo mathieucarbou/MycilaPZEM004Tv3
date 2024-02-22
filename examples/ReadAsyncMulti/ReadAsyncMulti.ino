@@ -5,24 +5,13 @@
 Mycila::PZEM pzem1; // 0x01
 Mycila::PZEM pzem2; // 0x02
 
-void _pzemTask(void* param) {
-  while (true) {
-    pzem1.read();
-    yield();
-    pzem2.read();
-    yield();
-  }
-}
-
 void setup() {
   Serial.begin(115200);
   while (!Serial)
     continue;
 
-  pzem1.begin(&Serial1, 27, 14, 0x01);
-  pzem2.begin(&Serial1, 27, 14, 0x02);
-
-  xTaskCreateUniversal(_pzemTask, "pzemTask", MYCILA_PZEM_ASYNC_STACK_SIZE, nullptr, MYCILA_PZEM__ASYNC_PRIORITY, nullptr, MYCILA_PZEM_ASYNC_CORE);
+  pzem1.begin(&Serial1, 27, 14, 0x01, true);
+  pzem2.begin(&Serial1, 27, 14, 0x02, true);
 }
 
 void loop() {
