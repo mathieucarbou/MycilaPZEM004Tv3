@@ -120,7 +120,7 @@ void Mycila::PZEM::end() {
     _enabled = false;
     _remove(this);
     delay(MYCILA_PZEM_READ_TIMEOUT_MS);
-    _address = MYCILA_PZEM_DEFAULT_ADDRESS;
+    _address = MYCILA_PZEM_INVALID_ADDRESS;
     _current = 0;
     _frequency = 0;
     _power = 0;
