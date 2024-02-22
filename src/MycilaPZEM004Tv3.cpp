@@ -123,7 +123,6 @@ void Mycila::PZEM::end() {
     _power = 0;
     _powerFactor = 0;
     _voltage = 0;
-    _serial->end();
   }
 }
 
