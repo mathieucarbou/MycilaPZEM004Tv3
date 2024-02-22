@@ -104,7 +104,7 @@ void Mycila::PZEM::begin(HardwareSerial* serial,
     ESP_LOGW(TAG, "Unable to read PZEM at address 0x%02X. Please verify that the device is powered and that its address is correctly set.", address);
   }
 
-  assert(!async || xTaskCreateUniversal(_pzemTask, "pzemTask", stackSize, this, MYCILA_PZEM__ASYNC_PRIORITY, &_taskHandle, core) == pdPASS);
+  assert(!async || xTaskCreateUniversal(_pzemTask, "pzemTask", stackSize, this, MYCILA_PZEM_ASYNC_PRIORITY, &_taskHandle, core) == pdPASS);
 
   _enabled = true;
 }
