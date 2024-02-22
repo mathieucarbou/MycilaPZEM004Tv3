@@ -114,7 +114,7 @@ namespace Mycila {
       HardwareSerial* _serial = nullptr;
       uint32_t _lastReadSuccess = 0;
       volatile bool _enabled = false;
-      volatile uint8_t _address = MYCILA_PZEM_DEFAULT_ADDRESS;
+      volatile uint8_t _address = MYCILA_PZEM_INVALID_ADDRESS;
 
     private:
       static void _openSerial(HardwareSerial* serial, const uint8_t pzemRXPin, const uint8_t pzemTXPin);
