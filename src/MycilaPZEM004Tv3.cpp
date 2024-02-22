@@ -422,8 +422,10 @@ bool Mycila::PZEM::_sendCmd8(uint8_t cmd, uint16_t rAddr, uint16_t val, bool che
 void Mycila::PZEM::_pzemTask(void* params) {
   PZEM* pzem = reinterpret_cast<PZEM*>(params);
   while (pzem->_enabled) {
-    pzem->read();
-    yield();
+    if (pzem->read())
+      yield();
+    else
+      delay(MYCILA_PZEM_READ_TIMEOUT_MS);
   }
   pzem->_taskHandle = NULL;
   vTaskDelete(NULL);
