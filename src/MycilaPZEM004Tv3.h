@@ -94,8 +94,21 @@ namespace Mycila {
       // note :this is the active power, not the apparent power
       float getPower() const { return _power; }
       float getPowerFactor() const { return _powerFactor; }
-      float getApparentPower() const { return _power / _powerFactor; }
+      float getApparentPower() const { return _powerFactor == 0 ? 0 : _power / _powerFactor; }
       float getVoltage() const { return _voltage; }
+
+      float getResistance() const {
+        const float c = _current;
+        return c == 0 ? 0 : _voltage * _powerFactor / c;
+      }
+
+      float getTHDi(float phi) const {
+        const float pf = _powerFactor;
+        if (pf == 0)
+          return 0;
+        // https://fr.electrical-installation.org/frwiki/Indicateur_de_distorsion_harmonique_:_facteur_de_puissance
+        return sqrt(pow(cos(phi), 2) / pow(pf, 2) - 1);
+      }
 
       // get the uptime in milliseconds of the last successful read
       uint32_t getTime() const { return _lastReadSuccess; }
