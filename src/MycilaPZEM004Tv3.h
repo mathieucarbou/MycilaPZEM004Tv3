@@ -12,10 +12,10 @@
 #include <ArduinoJson.h>
 #endif
 
-#define MYCILA_PZEM_VERSION          "1.1.4"
+#define MYCILA_PZEM_VERSION          "1.1.5"
 #define MYCILA_PZEM_VERSION_MAJOR    1
 #define MYCILA_PZEM_VERSION_MINOR    1
-#define MYCILA_PZEM_VERSION_REVISION 4
+#define MYCILA_PZEM_VERSION_REVISION 5
 
 #ifndef MYCILA_PZEM_ASYNC_CORE
 #define MYCILA_PZEM_ASYNC_CORE 0
