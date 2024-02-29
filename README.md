@@ -89,6 +89,15 @@ pzem.setAddress(0x42);
 pzem.begin(&Serial1, 27, 14, address);
 ```
 
+### Json support
+
+Json support is optional. 
+If you need it, please add this compilation flag to activate it: `-D MYCILA_PZEM_JSON_SUPPORT` and do not forget to include the ArduinoJson library:
+
+```c++
+#include <ArduinoJson.h>
+```
+
 ## Multiple PZEM-004T v3 devices on the same RX/TX port
 
 1. Connect the first PZEM-004T v3 to the RX/TX port of the ESP32
