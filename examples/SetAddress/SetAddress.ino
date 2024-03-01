@@ -1,3 +1,9 @@
+/*
+  * This example shows how to set an address to a PZEM004Tv3 device.
+  *
+  * The circuit:
+  * - PZEM004Tv3 connected to Serial1 (RX=27, TX=14)
+*/
 #include <Arduino.h>
 #include <MycilaPZEM004Tv3.h>
 

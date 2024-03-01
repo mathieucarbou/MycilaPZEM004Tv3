@@ -1,3 +1,14 @@
+/*
+  * This example shows how to read the energy data of several PZEM004Tv3 devices on the same Serial port.
+  * PZEM have to be assigned addresses before using this example.
+  *
+  * The circuit:
+  * - PZEM004Tv3 #1 connected to Serial1 (RX=27, TX=14)
+  * - PZEM004Tv3 #2 connected to Serial1 (RX=27, TX=14)
+  *
+  * Compile with -D MYCILA_PZEM_JSON_SUPPORT to enable JSON support
+  * Add ArduinoJson library to your project
+*/
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <MycilaPZEM004Tv3.h>

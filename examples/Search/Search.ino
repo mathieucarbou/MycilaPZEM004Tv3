@@ -1,3 +1,11 @@
+/*
+  * This example shows how to search for PZEM004Tv3 devices on the same Serial port.
+  * PZEM have to be assigned addresses before using this example.
+  *
+  * The circuit:
+  * - PZEM004Tv3 #1 connected to Serial1 (RX=27, TX=14)
+  * - PZEM004Tv3 #2 connected to Serial1 (RX=27, TX=14)
+*/
 #include <Arduino.h>
 #include <MycilaPZEM004Tv3.h>
 
