@@ -109,6 +109,6 @@ If you need it, please add this compilation flag to activate it: `-D MYCILA_PZEM
 
 ## Reference material
 
-- [PZEM-004T-V3.0-Datasheet-User-Manual.pdf](PZEM-004T-V3.0-Datasheet-User-Manual.pdf)
+- [PZEM-004T-V3.0-Datasheet-User-Manual.pdf](https://oss.carbou.me/MycilaPZEM004Tv3/PZEM-004T-V3.0-Datasheet-User-Manual.pdf)
 - [PZEM-004T V3](https://innovatorsguru.com/pzem-004t-v3/)
 - [mandulaj/PZEM-004T-v30](https://github.com/mandulaj/PZEM-004T-v30)
