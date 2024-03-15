@@ -19,6 +19,16 @@
 #define PZEM_RESET_RESPONSE_SIZE 5
 #define PZEM_ADDR_RESPONSE_SIZE  7
 
+#ifndef GPIO_IS_VALID_OUTPUT_GPIO
+#define GPIO_IS_VALID_OUTPUT_GPIO(gpio_num) ((gpio_num >= 0) && \
+                                             (((1ULL << (gpio_num)) & SOC_GPIO_VALID_OUTPUT_GPIO_MASK) != 0))
+#endif
+
+#ifndef GPIO_IS_VALID_GPIO
+#define GPIO_IS_VALID_GPIO(gpio_num) ((gpio_num >= 0) && \
+                                      (((1ULL << (gpio_num)) & SOC_GPIO_VALID_GPIO_MASK) != 0))
+#endif
+
 // Pre computed CRC table
 static const uint16_t crcTable[] PROGMEM = {
   0X0000, 0XC0C1, 0XC181, 0X0140, 0XC301, 0X03C0, 0X0280, 0XC241,
