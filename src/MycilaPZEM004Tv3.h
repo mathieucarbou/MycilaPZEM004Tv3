@@ -51,12 +51,12 @@ namespace Mycila {
     public:
       ~PZEM() { end(); }
 
-      // - pzemRXPin: pin connected to the RX of the PZEM,
-      // - pzemTXPin: pin connected to the TX of the PZEM
+      // - rxPin: RX pin of the board, connected to the TX of the PZEM,
+      // - txPin: TX pin of the board, connected to the RX of the PZEM
       // - address: the address of the PZEM. Default to MYCILA_PZEM_DEFAULT_ADDRESS. Set to a value between 0x01 and 0xF7 included, or MYCILA_PZEM_DEFAULT_ADDRESS (default)
       void begin(HardwareSerial* serial,
-                 const uint8_t pzemRXPin,
-                 const uint8_t pzemTXPin,
+                 const uint8_t rxPin,
+                 const uint8_t txPin,
                  const uint8_t address = MYCILA_PZEM_DEFAULT_ADDRESS,
                  const bool async = false);
 
@@ -123,7 +123,7 @@ namespace Mycila {
       volatile uint8_t _address = MYCILA_PZEM_INVALID_ADDRESS;
 
     private:
-      static void _openSerial(HardwareSerial* serial, const uint8_t pzemRXPin, const uint8_t pzemTXPin);
+      static void _openSerial(HardwareSerial* serial, const uint8_t rxPin, const uint8_t txPin);
       static size_t _drop(HardwareSerial* serial);
       static bool _canRead(HardwareSerial* serial, uint16_t slaveAddr);
       static size_t _timedRead(HardwareSerial* serial, uint8_t* buffer, size_t length);

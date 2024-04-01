@@ -69,8 +69,8 @@ Mycila::PZEM* Mycila::PZEM::_instances[MYCILA_PZEM_ASYNC_MAX_INSTANCES];
 std::timed_mutex Mycila::PZEM::_mutex;
 
 void Mycila::PZEM::begin(HardwareSerial* serial,
-                         const uint8_t pzemRXPin,
-                         const uint8_t pzemTXPin,
+                         const uint8_t rxPin,
+                         const uint8_t txPin,
                          const uint8_t address,
                          const bool async) {
   if (_enabled)
@@ -81,18 +81,18 @@ void Mycila::PZEM::begin(HardwareSerial* serial,
     return;
   }
 
-  if (GPIO_IS_VALID_OUTPUT_GPIO(pzemRXPin)) {
-    _pinRX = (gpio_num_t)pzemRXPin;
+  if (GPIO_IS_VALID_GPIO(rxPin)) {
+    _pinRX = (gpio_num_t)rxPin;
   } else {
-    ESP_LOGE(TAG, "Disable PZEM: Invalid PZEM RX pin: %u", _pinRX);
+    ESP_LOGE(TAG, "Disable PZEM: Invalid RX pin: %u", rxPin);
     _pinRX = GPIO_NUM_NC;
     return;
   }
 
-  if (GPIO_IS_VALID_GPIO(pzemTXPin)) {
-    _pinTX = (gpio_num_t)pzemTXPin;
+  if (GPIO_IS_VALID_OUTPUT_GPIO(txPin)) {
+    _pinTX = (gpio_num_t)txPin;
   } else {
-    ESP_LOGE(TAG, "Disable PZEM: Invalid PZEM TX pin: %u", _pinTX);
+    ESP_LOGE(TAG, "Disable PZEM: Invalid TX pin: %u", txPin);
     _pinTX = GPIO_NUM_NC;
     return;
   }
@@ -103,8 +103,8 @@ void Mycila::PZEM::begin(HardwareSerial* serial,
   }
 
   ESP_LOGI(TAG, "Enable PZEM @ 0x%02X...", address);
-  ESP_LOGD(TAG, "- PZEM RX Pin (Serial TX): %u", _pinRX);
-  ESP_LOGD(TAG, "- PZEM TX Pin (Serial RX): %u", _pinTX);
+  ESP_LOGD(TAG, "- Serial RX (PZEM TX Pin): %u", _pinRX);
+  ESP_LOGD(TAG, "- Serial TX (PZEM RX Pin): %u", _pinTX);
   ESP_LOGD(TAG, "- Async: %s", async ? "true" : "false");
 
   _serial = serial;
@@ -115,7 +115,7 @@ void Mycila::PZEM::begin(HardwareSerial* serial,
       return;
 
   } else {
-    _openSerial(serial, pzemRXPin, pzemTXPin);
+    _openSerial(serial, _pinRX, _pinTX);
     if (!_canRead(serial, address)) {
       ESP_LOGW(TAG, "Unable to read PZEM at address 0x%02X. Please verify that the device is powered and that its address is correctly set.", address);
     }
@@ -303,7 +303,7 @@ size_t Mycila::PZEM::search(uint8_t* addresses, const size_t maxCount) {
   uint8_t buffer[PZEM_ADDR_RESPONSE_SIZE];
   size_t count = 0;
 
-  for (uint16_t address = 0x01; address <= 0xF8 && count < maxCount; address++) {
+  for (uint16_t address = 0x01; address <= MYCILA_PZEM_DEFAULT_ADDRESS && count < maxCount; address++) {
     if (!_mutex.try_lock_for(std::chrono::milliseconds(1000))) {
       ESP_LOGW(TAG, "Cannot search address 0x%02X: Serial is busy!", address);
       break;
@@ -517,9 +517,9 @@ void Mycila::PZEM::_pzemTask(void* params) {
   vTaskDelete(NULL);
 }
 
-void Mycila::PZEM::_openSerial(HardwareSerial* serial, const uint8_t pzemRXPin, const uint8_t pzemTXPin) {
+void Mycila::PZEM::_openSerial(HardwareSerial* serial, const uint8_t rxPin, const uint8_t txPin) {
   ESP_LOGD(TAG, "Open serial...");
-  serial->begin(PZEM_BAUD_RATE, SERIAL_8N1, pzemTXPin, pzemRXPin);
+  serial->begin(PZEM_BAUD_RATE, SERIAL_8N1, rxPin, txPin);
   serial->setTimeout(MYCILA_PZEM_READ_TIMEOUT_MS);
   while (!serial)
     yield();

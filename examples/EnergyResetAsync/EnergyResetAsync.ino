@@ -3,7 +3,7 @@
   * when the energy consumed is greater than 0.002 kWh.
   *
   * The circuit:
-  * - PZEM004Tv3 connected to Serial1 (RX=27, TX=14)
+  * - PZEM004Tv3 connected to Serial1 (RX=14, TX=27)
   *
   * Compile with -D MYCILA_PZEM_JSON_SUPPORT to enable JSON support
   * Add ArduinoJson library to your project
@@ -19,7 +19,7 @@ void setup() {
   while (!Serial)
     continue;
 
-  pzem.begin(&Serial1, 27, 14, MYCILA_PZEM_DEFAULT_ADDRESS, true);
+  pzem.begin(&Serial1, 14, 27, MYCILA_PZEM_DEFAULT_ADDRESS, true);
 }
 
 void loop() {

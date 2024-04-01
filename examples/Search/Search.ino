@@ -3,8 +3,8 @@
   * PZEM have to be assigned addresses before using this example.
   *
   * The circuit:
-  * - PZEM004Tv3 #1 connected to Serial1 (RX=27, TX=14)
-  * - PZEM004Tv3 #2 connected to Serial1 (RX=27, TX=14)
+  * - PZEM004Tv3 #1 connected to Serial1 (RX=14, TX=27)
+  * - PZEM004Tv3 #2 connected to Serial1 (RX=14, TX=27)
 */
 #include <Arduino.h>
 #include <MycilaPZEM004Tv3.h>
@@ -16,7 +16,7 @@ void setup() {
   while (!Serial)
     continue;
 
-  pzem.begin(&Serial1, 27, 14);
+  pzem.begin(&Serial1, 14, 27);
 
   uint8_t addresses[MYCILA_PZEM_MAX_ADDRESS_COUNT];
   size_t count = pzem.search(addresses, MYCILA_PZEM_MAX_ADDRESS_COUNT);

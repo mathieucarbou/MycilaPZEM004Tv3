@@ -2,7 +2,7 @@
   * This example shows how to set an address to a PZEM004Tv3 device.
   *
   * The circuit:
-  * - PZEM004Tv3 connected to Serial1 (RX=27, TX=14)
+  * - PZEM004Tv3 connected to Serial1 (RX=14, TX=27)
 */
 #include <Arduino.h>
 #include <MycilaPZEM004Tv3.h>
@@ -16,7 +16,7 @@ void setup() {
   while (!Serial)
     continue;
 
-  pzem.begin(&Serial1, 27, 14);
+  pzem.begin(&Serial1, 14, 27);
 
   while (true) {
     uint8_t address = pzem.readAddress();
@@ -31,7 +31,7 @@ void setup() {
 
   pzem.end();
 
-  pzem.begin(&Serial1, 27, 14, TARGET_ADDRESS);
+  pzem.begin(&Serial1, 14, 27, TARGET_ADDRESS);
 }
 
 void loop() {

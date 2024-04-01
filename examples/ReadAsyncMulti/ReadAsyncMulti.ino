@@ -3,8 +3,8 @@
   * PZEM have to be assigned addresses before using this example.
   *
   * The circuit:
-  * - PZEM004Tv3 #1 connected to Serial1 (RX=27, TX=14)
-  * - PZEM004Tv3 #2 connected to Serial1 (RX=27, TX=14)
+  * - PZEM004Tv3 #1 connected to Serial1 (RX=14, TX=27)
+  * - PZEM004Tv3 #2 connected to Serial1 (RX=14, TX=27)
   *
   * Compile with -D MYCILA_PZEM_JSON_SUPPORT to enable JSON support
   * Add ArduinoJson library to your project
@@ -21,8 +21,8 @@ void setup() {
   while (!Serial)
     continue;
 
-  pzem1.begin(&Serial1, 27, 14, 0x01, true);
-  pzem2.begin(&Serial1, 27, 14, 0x02, true);
+  pzem1.begin(&Serial1, 14, 27, 0x01, true);
+  pzem2.begin(&Serial1, 14, 27, 0x02, true);
 }
 
 void loop() {
