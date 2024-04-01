@@ -45,7 +45,7 @@ There is a getter for each metric.
 Mycila::PZEM pzem;
 
 void setup() {
-  pzem.begin(&Serial1, 27, 14);
+  pzem.begin(&Serial1, 14, 27);
 }
 
 void loop() {
@@ -62,7 +62,7 @@ void loop() {
 Mycila::PZEM pzem;
 
 void setup() {
-  pzem.begin(&Serial1, 27, 14, MYCILA_PZEM_DEFAULT_ADDRESS, true);
+  pzem.begin(&Serial1, 14, 27, MYCILA_PZEM_DEFAULT_ADDRESS, true);
 }
 ```
 
@@ -86,7 +86,7 @@ pzem.setAddress(0x42);
 ### Start a PZEM with a specific address
 
 ```c++
-pzem.begin(&Serial1, 27, 14, address);
+pzem.begin(&Serial1, 14, 27, address);
 ```
 
 ### Json support
