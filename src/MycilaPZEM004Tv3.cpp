@@ -84,7 +84,7 @@ void Mycila::PZEM::begin(HardwareSerial* serial,
   if (GPIO_IS_VALID_GPIO(rxPin)) {
     _pinRX = (gpio_num_t)rxPin;
   } else {
-    ESP_LOGE(TAG, "Disable PZEM: Invalid RX pin: %u", rxPin);
+    ESP_LOGE(TAG, "Disable PZEM: Invalid RX pin: %" PRIu8, rxPin);
     _pinRX = GPIO_NUM_NC;
     return;
   }
@@ -92,7 +92,7 @@ void Mycila::PZEM::begin(HardwareSerial* serial,
   if (GPIO_IS_VALID_OUTPUT_GPIO(txPin)) {
     _pinTX = (gpio_num_t)txPin;
   } else {
-    ESP_LOGE(TAG, "Disable PZEM: Invalid TX pin: %u", txPin);
+    ESP_LOGE(TAG, "Disable PZEM: Invalid TX pin: %" PRIu8, txPin);
     _pinTX = GPIO_NUM_NC;
     return;
   }
