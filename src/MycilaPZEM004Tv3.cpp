@@ -175,14 +175,38 @@ bool Mycila::PZEM::read() {
     return false;
   }
 
-  _voltage = ((uint32_t)buffer[3] << 8 | (uint32_t)buffer[4]) / 10.0;                                                              // Raw voltage in 0.1V
-  _current = ((uint32_t)buffer[5] << 8 | (uint32_t)buffer[6] | (uint32_t)buffer[7] << 24 | (uint32_t)buffer[8] << 16) / 1000.0;    // Raw current in 0.001A
-  _power = ((uint32_t)buffer[9] << 8 | (uint32_t)buffer[10] | (uint32_t)buffer[11] << 24 | (uint32_t)buffer[12] << 16) / 10.0;     // Raw power in 0.1W
-  _energy = ((uint32_t)buffer[13] << 8 | (uint32_t)buffer[14] | (uint32_t)buffer[15] << 24 | (uint32_t)buffer[16] << 16) / 1000.0; // Raw Energy in 1Wh
-  _frequency = ((uint32_t)buffer[17] << 8 | (uint32_t)buffer[18]) / 10.0;                                                          // Raw Frequency in 0.1Hz
-  _powerFactor = ((uint32_t)buffer[19] << 8 | (uint32_t)buffer[20]) / 100.0;                                                       // Raw pf in 0.01
+  float voltage = ((uint32_t)buffer[3] << 8 | (uint32_t)buffer[4]) / 10.0;                                                              // Raw voltage in 0.1V
+  float current = ((uint32_t)buffer[5] << 8 | (uint32_t)buffer[6] | (uint32_t)buffer[7] << 24 | (uint32_t)buffer[8] << 16) / 1000.0;    // Raw current in 0.001A
+  float power = ((uint32_t)buffer[9] << 8 | (uint32_t)buffer[10] | (uint32_t)buffer[11] << 24 | (uint32_t)buffer[12] << 16) / 10.0;     // Raw power in 0.1W
+  float energy = ((uint32_t)buffer[13] << 8 | (uint32_t)buffer[14] | (uint32_t)buffer[15] << 24 | (uint32_t)buffer[16] << 16) / 1000.0; // Raw Energy in 1Wh
+  float frequency = ((uint32_t)buffer[17] << 8 | (uint32_t)buffer[18]) / 10.0;                                                          // Raw Frequency in 0.1Hz
+  float powerFactor = ((uint32_t)buffer[19] << 8 | (uint32_t)buffer[20]) / 100.0;                                                       // Raw pf in 0.01
+
+  bool changed = voltage != _voltage ||
+                 current != _current ||
+                 power != _power ||
+                 energy != _energy ||
+                 frequency != _frequency ||
+                 powerFactor != _powerFactor;
+
+  if (changed) {
+    _voltage = voltage;
+    _current = current;
+    _power = power;
+    _energy = energy;
+    _frequency = frequency;
+    _powerFactor = powerFactor;
+  }
 
   _lastReadSuccess = millis();
+
+  if (_callback) {
+    _callback(PZEMEventType::EVT_READ);
+    if (changed) {
+      _callback(PZEMEventType::EVT_CHANGE);
+    }
+  }
+
   return true;
 }
 

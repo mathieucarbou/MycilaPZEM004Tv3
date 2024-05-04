@@ -47,6 +47,19 @@
 #define MYCILA_PZEM_MAX_ADDRESS_COUNT 0xF8
 
 namespace Mycila {
+  enum class PZEMEventType {
+    // PZEM has successfully read the data
+    EVT_READ = 0,
+    // PZEM has successfully read the data and the values have changed
+    EVT_CHANGE,
+    // wrong data received when reading values
+    EVT_READ_ERROR,
+    // timeout reached when reading values
+    EVT_READ_TIMEOUT
+  };
+
+  typedef std::function<void(const PZEMEventType eventType)> PZEMCallback;
+
   class PZEM {
     public:
       ~PZEM() { end(); }
@@ -106,6 +119,8 @@ namespace Mycila {
       // check if the device is connected to the , meaning if last read was successful
       bool isConnected() const { return _frequency > 0; }
 
+      void setCallback(PZEMCallback callback) { _callback = callback; }
+
     private:
       volatile float _current = 0;   // A
       volatile float _energy = 0;    // kWh
@@ -121,6 +136,7 @@ namespace Mycila {
       uint32_t _lastReadSuccess = 0;
       volatile bool _enabled = false;
       volatile uint8_t _address = MYCILA_PZEM_INVALID_ADDRESS;
+      PZEMCallback _callback = nullptr;
 
     private:
       static void _openSerial(HardwareSerial* serial, const uint8_t rxPin, const uint8_t txPin);
