@@ -69,8 +69,8 @@ Mycila::PZEM* Mycila::PZEM::_instances[MYCILA_PZEM_ASYNC_MAX_INSTANCES];
 std::timed_mutex Mycila::PZEM::_mutex;
 
 void Mycila::PZEM::begin(HardwareSerial* serial,
-                         const uint8_t rxPin,
-                         const uint8_t txPin,
+                         const int8_t rxPin,
+                         const int8_t txPin,
                          const uint8_t address,
                          const bool async) {
   if (_enabled)
@@ -84,7 +84,7 @@ void Mycila::PZEM::begin(HardwareSerial* serial,
   if (GPIO_IS_VALID_GPIO(rxPin)) {
     _pinRX = (gpio_num_t)rxPin;
   } else {
-    ESP_LOGE(TAG, "Disable PZEM: Invalid RX pin: %" PRIu8, rxPin);
+    ESP_LOGE(TAG, "Disable PZEM: Invalid RX pin: %" PRId8, rxPin);
     _pinRX = GPIO_NUM_NC;
     return;
   }
@@ -92,7 +92,7 @@ void Mycila::PZEM::begin(HardwareSerial* serial,
   if (GPIO_IS_VALID_OUTPUT_GPIO(txPin)) {
     _pinTX = (gpio_num_t)txPin;
   } else {
-    ESP_LOGE(TAG, "Disable PZEM: Invalid TX pin: %" PRIu8, txPin);
+    ESP_LOGE(TAG, "Disable PZEM: Invalid TX pin: %" PRId8, txPin);
     _pinTX = GPIO_NUM_NC;
     return;
   }
