@@ -99,7 +99,7 @@ If you need it, please add this compilation flag to activate it: `-D MYCILA_PZEM
 #include <ArduinoJson.h>
 ```
 
-## Multiple PZEM-004T v3 devices on the same RX/TX port
+### Multiple PZEM-004T v3 devices on the same RX/TX port
 
 1. Connect the first PZEM-004T v3 to the RX/TX port of the ESP32
 2. Restart and set the address of the first PZEM-004T v3 (you can use the `SetAddress.ino` file)
