@@ -19,7 +19,7 @@ void setup() {
   while (!Serial)
     continue;
 
-  pzem.begin(&Serial1, 14, 27, MYCILA_PZEM_DEFAULT_ADDRESS, true);
+  pzem.begin(Serial1, 14, 27, MYCILA_PZEM_DEFAULT_ADDRESS, true);
 }
 
 void loop() {

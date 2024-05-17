@@ -68,18 +68,13 @@ TaskHandle_t Mycila::PZEM::_taskHandle = NULL;
 Mycila::PZEM* Mycila::PZEM::_instances[MYCILA_PZEM_ASYNC_MAX_INSTANCES];
 std::timed_mutex Mycila::PZEM::_mutex;
 
-void Mycila::PZEM::begin(HardwareSerial* serial,
+void Mycila::PZEM::begin(HardwareSerial& serial,
                          const int8_t rxPin,
                          const int8_t txPin,
                          const uint8_t address,
                          const bool async) {
   if (_enabled)
     return;
-
-  if (serial == nullptr) {
-    ESP_LOGE(TAG, "Disable PZEM: Invalid serial");
-    return;
-  }
 
   if (GPIO_IS_VALID_GPIO(rxPin)) {
     _pinRX = (gpio_num_t)rxPin;
@@ -107,7 +102,7 @@ void Mycila::PZEM::begin(HardwareSerial* serial,
   ESP_LOGD(TAG, "- Serial TX (PZEM RX Pin): %u", _pinTX);
   ESP_LOGD(TAG, "- Async: %s", async ? "true" : "false");
 
-  _serial = serial;
+  _serial = &serial;
   _address = address;
 
   if (async) {
@@ -115,8 +110,8 @@ void Mycila::PZEM::begin(HardwareSerial* serial,
       return;
 
   } else {
-    _openSerial(serial, _pinRX, _pinTX);
-    if (!_canRead(serial, address)) {
+    _openSerial(&serial, _pinRX, _pinTX);
+    if (!_canRead(&serial, address)) {
       ESP_LOGW(TAG, "Unable to read PZEM at address 0x%02X. Please verify that the device is powered and that its address is correctly set.", address);
     }
   }

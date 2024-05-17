@@ -67,7 +67,7 @@ namespace Mycila {
       // - rxPin: RX pin of the board, connected to the TX of the PZEM,
       // - txPin: TX pin of the board, connected to the RX of the PZEM
       // - address: the address of the PZEM. Default to MYCILA_PZEM_DEFAULT_ADDRESS. Set to a value between 0x01 and 0xF7 included, or MYCILA_PZEM_DEFAULT_ADDRESS (default)
-      void begin(HardwareSerial* serial,
+      void begin(HardwareSerial& serial, // NOLINT
                  const int8_t rxPin,
                  const int8_t txPin,
                  const uint8_t address = MYCILA_PZEM_DEFAULT_ADDRESS,

@@ -21,8 +21,8 @@ void setup() {
   while (!Serial)
     continue;
 
-  pzem1.begin(&Serial1, 14, 27, 0x01, true);
-  pzem2.begin(&Serial1, 14, 27, 0x02, true);
+  pzem1.begin(Serial1, 14, 27, 0x01, true);
+  pzem2.begin(Serial1, 14, 27, 0x02, true);
 }
 
 void loop() {

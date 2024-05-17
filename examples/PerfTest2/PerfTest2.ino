@@ -15,7 +15,7 @@ void setup() {
   while (!Serial)
     continue;
 
-  pzem.begin(&Serial1, 14, 27, PZEM_ADDRESS, true);
+  pzem.begin(Serial1, 14, 27, PZEM_ADDRESS, true);
 
   pinMode(RELAY_PIN, OUTPUT);
   digitalWrite(RELAY_PIN, HIGH);

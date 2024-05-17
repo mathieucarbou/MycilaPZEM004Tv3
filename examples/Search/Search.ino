@@ -16,7 +16,7 @@ void setup() {
   while (!Serial)
     continue;
 
-  pzem.begin(&Serial1, 14, 27);
+  pzem.begin(Serial1, 14, 27);
 
   uint8_t addresses[MYCILA_PZEM_MAX_ADDRESS_COUNT];
   size_t count = pzem.search(addresses, MYCILA_PZEM_MAX_ADDRESS_COUNT);

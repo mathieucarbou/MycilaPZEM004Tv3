@@ -16,7 +16,7 @@ void setup() {
   while (!Serial)
     continue;
 
-  pzem.begin(&Serial1, 14, 27);
+  pzem.begin(Serial1, 14, 27);
 
   while (true) {
     uint8_t address = pzem.readAddress();
@@ -31,7 +31,7 @@ void setup() {
 
   pzem.end();
 
-  pzem.begin(&Serial1, 14, 27, TARGET_ADDRESS);
+  pzem.begin(Serial1, 14, 27, TARGET_ADDRESS);
 }
 
 void loop() {
