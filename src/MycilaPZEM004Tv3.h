@@ -12,8 +12,8 @@
 #include <ArduinoJson.h>
 #endif
 
-#define MYCILA_PZEM_VERSION          "3.0.0"
-#define MYCILA_PZEM_VERSION_MAJOR    3
+#define MYCILA_PZEM_VERSION          "4.0.0"
+#define MYCILA_PZEM_VERSION_MAJOR    4
 #define MYCILA_PZEM_VERSION_MINOR    0
 #define MYCILA_PZEM_VERSION_REVISION 0
 
