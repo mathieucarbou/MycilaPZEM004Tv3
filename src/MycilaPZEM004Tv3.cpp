@@ -353,7 +353,7 @@ size_t Mycila::PZEM::search(uint8_t* addresses, const size_t maxCount) {
   return count;
 }
 
-#ifdef MYCILA_PZEM_JSON_SUPPORT
+#ifdef MYCILA_JSON_SUPPORT
 void Mycila::PZEM::toJson(const JsonObject& root) const {
   root["address"] = _address;
   root["current"] = _current;

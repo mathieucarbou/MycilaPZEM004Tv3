@@ -93,7 +93,7 @@ pzem.begin(Serial1, 14, 27, address);
 ### Json support
 
 Json support is optional.
-If you need it, please add this compilation flag to activate it: `-D MYCILA_PZEM_JSON_SUPPORT` and do not forget to include the ArduinoJson library:
+If you need it, please add this compilation flag to activate it: `-D MYCILA_JSON_SUPPORT` and do not forget to include the ArduinoJson library:
 
 ```c++
 #include <ArduinoJson.h>

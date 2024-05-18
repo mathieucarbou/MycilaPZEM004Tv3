@@ -4,7 +4,7 @@
   * The circuit:
   * - PZEM004Tv3 connected to Serial1 (RX=14, TX=27)
   *
-  * Compile with -D MYCILA_PZEM_JSON_SUPPORT to enable JSON support
+  * Compile with -D MYCILA_JSON_SUPPORT to enable JSON support
   * Add ArduinoJson library to your project
 */
 #include <Arduino.h>

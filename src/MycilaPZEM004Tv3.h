@@ -8,7 +8,7 @@
 
 #include <mutex>
 
-#ifdef MYCILA_PZEM_JSON_SUPPORT
+#ifdef MYCILA_JSON_SUPPORT
 #include <ArduinoJson.h>
 #endif
 
@@ -92,7 +92,7 @@ namespace Mycila {
       // Returns the number of devices found
       size_t search(uint8_t* addresses, const size_t maxCount);
 
-#ifdef MYCILA_PZEM_JSON_SUPPORT
+#ifdef MYCILA_JSON_SUPPORT
       void toJson(const JsonObject& root) const;
 #endif
 
