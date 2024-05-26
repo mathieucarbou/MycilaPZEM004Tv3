@@ -111,7 +111,7 @@ void Mycila::PZEM::begin(HardwareSerial& serial,
     return;
   }
 
-  LOGI(TAG, "Enable PZEM 0x%02X, Serial RX (PZEM TX Pin): %" PRId8 ", Serial TX (PZEM RX Pin): %" PRId8, address, rxPin, txPin);
+  LOGI(TAG, "[0x%02X] Enable PZEM: Serial RX (PZEM TX Pin): %" PRId8 ", Serial TX (PZEM RX Pin): %" PRId8, address, rxPin, txPin);
 
   _serial = &serial;
   _address = address;
@@ -123,7 +123,7 @@ void Mycila::PZEM::begin(HardwareSerial& serial,
   } else {
     _openSerial(&serial, _pinRX, _pinTX);
     if (!_canRead(&serial, address)) {
-      LOGW(TAG, "Unable to read PZEM at address 0x%02X. Please verify that the device is powered and that its address is correctly set.", address);
+      LOGW(TAG, "[0x%02X] Unable to read PZEM. Please verify that the device is powered and that its address is correctly set.", address);
     }
   }
 
@@ -132,7 +132,7 @@ void Mycila::PZEM::begin(HardwareSerial& serial,
 
 void Mycila::PZEM::end() {
   if (_enabled) {
-    LOGI(TAG, "Disable PZEM at address 0x%02X...", _address);
+    LOGI(TAG, "[0x%02X] Disable PZEM...", _address);
     _enabled = false;
     _remove(this);
     delay(MYCILA_PZEM_READ_TIMEOUT_MS);
@@ -150,7 +150,7 @@ bool Mycila::PZEM::read() {
     return false;
 
   if (!_mutex.try_lock_for(std::chrono::milliseconds(1000))) {
-    LOGW(TAG, "Cannot read: Serial is busy!");
+    LOGW(TAG, "[0x%02X] Cannot read PZEM: Serial is busy!", _address);
     return false;
   }
 
@@ -177,7 +177,7 @@ bool Mycila::PZEM::read() {
     _power = 0;
     _powerFactor = 0;
     _voltage = 0;
-    LOGD(TAG, "Read failed: %d", count);
+    LOGD(TAG, "[0x%02X] Read failed: %d", _address, count);
     return false;
   }
 
@@ -221,11 +221,11 @@ bool Mycila::PZEM::resetEnergy() {
     return false;
 
   if (!_mutex.try_lock_for(std::chrono::milliseconds(1000))) {
-    LOGW(TAG, "Cannot reset: Serial is busy!");
+    LOGW(TAG, "[0x%02X] Cannot reset PZEM: Serial is busy!", _address);
     return false;
   }
 
-  LOGI(TAG, "Reset PZEM Energy data...");
+  LOGI(TAG, "[0x%02X] Reset Energy data...", _address);
 
   uint8_t request[] = {0x00, PZEM_CMD_REST, 0x00, 0x00};
   request[0] = _address;
@@ -239,12 +239,12 @@ bool Mycila::PZEM::resetEnergy() {
   _mutex.unlock();
 
   if (!count) {
-    LOGD(TAG, "Reset timeout");
+    LOGD(TAG, "[0x%02X] Reset timeout", _address);
     return false;
   }
 
   if (count == PZEM_RESET_RESPONSE_SIZE) {
-    LOGD(TAG, "Reset failed!");
+    LOGD(TAG, "[0x%02X] Reset failed!", _address);
     return false;
   }
 
@@ -262,11 +262,11 @@ bool Mycila::PZEM::setAddress(const uint8_t address) {
     return true;
 
   if (!_mutex.try_lock_for(std::chrono::milliseconds(1000))) {
-    LOGW(TAG, "Cannot set address: Serial is busy!");
+    LOGW(TAG, "[0x%02X] Cannot set address: Serial is busy!", _address);
     return false;
   }
 
-  LOGI(TAG, "Set address to 0x%02X...", address);
+  LOGI(TAG, "[0x%02X] Set address to 0x%02X...", _address, address);
 
   const bool success = _sendCmd8(_serial, PZEM_CMD_WSR, PZEM_WREG_ADDR, address, true, _address);
 
@@ -277,7 +277,7 @@ bool Mycila::PZEM::setAddress(const uint8_t address) {
   _mutex.unlock();
 
   if (!success) {
-    LOGD(TAG, "Set address failed!");
+    LOGD(TAG, "[0x%02X] Set address failed!", _address);
   }
 
   return success;
@@ -288,7 +288,7 @@ uint8_t Mycila::PZEM::readAddress(bool update) {
     return false;
 
   if (!_mutex.try_lock_for(std::chrono::milliseconds(1000))) {
-    LOGW(TAG, "Cannot read address: Serial is busy!");
+    LOGW(TAG, "[0x%02X] Cannot read address: Serial is busy!", _address);
     return false;
   }
 
@@ -309,16 +309,14 @@ uint8_t Mycila::PZEM::readAddress(bool update) {
   _mutex.unlock();
 
   if (!count) {
-    LOGD(TAG, "Read address timeout");
+    LOGD(TAG, "[0x%02X] Read address timeout", _address);
     return MYCILA_PZEM_INVALID_ADDRESS;
   }
 
   if (count != PZEM_ADDR_RESPONSE_SIZE) {
-    LOGD(TAG, "Read address failed!");
+    LOGD(TAG, "[0x%02X] Read address failed!", _address);
     return MYCILA_PZEM_INVALID_ADDRESS;
   }
-
-  LOGD(TAG, "Read address: 0x%02X...", address);
 
   return address;
 }
@@ -335,7 +333,7 @@ size_t Mycila::PZEM::search(uint8_t* addresses, const size_t maxCount) {
 
   for (uint16_t address = 0x01; address <= MYCILA_PZEM_DEFAULT_ADDRESS && count < maxCount; address++) {
     if (!_mutex.try_lock_for(std::chrono::milliseconds(1000))) {
-      LOGW(TAG, "Cannot search address 0x%02X: Serial is busy!", address);
+      LOGW(TAG, "[0x%02X] Cannot search: Serial is busy!", _address);
       break;
     }
 
@@ -351,12 +349,12 @@ size_t Mycila::PZEM::search(uint8_t* addresses, const size_t maxCount) {
     }
 
     if (nRead != PZEM_ADDR_RESPONSE_SIZE) {
-      LOGD(TAG, "Search failed on address 0x%02X", address);
+      LOGD(TAG, "[0x%02X] Search response error", _address);
       yield();
       continue;
     }
 
-    LOGD(TAG, "Found device at address: 0x%02X", address);
+    LOGD(TAG, "[0x%02X] Found device at address: 0x%02X", _address, address);
     addresses[count++] = address;
     yield();
   }
@@ -474,13 +472,13 @@ uint16_t Mycila::PZEM::_crc16(const uint8_t* data, uint16_t len) {
 bool Mycila::PZEM::_add(PZEM* pzem) {
   for (size_t i = 0; i < MYCILA_PZEM_ASYNC_MAX_INSTANCES; i++) {
     if (_instances[i] == nullptr) {
-      LOGD(TAG, "Adding PZEM instance at address 0x%02X to async task...", pzem->_address);
+      LOGD(TAG, "Adding instance at address 0x%02X to async task...", pzem->_address);
 
       if (_taskHandle == NULL) {
         _openSerial(pzem->_serial, pzem->_pinRX, pzem->_pinTX);
 
         if (!_canRead(pzem->_serial, pzem->_address)) {
-          LOGW(TAG, "Unable to read PZEM at address 0x%02X. Please verify that the device is powered and that its address is correctly set.", pzem->_address);
+          LOGW(TAG, "Unable to read at address 0x%02X. Please verify that the device is powered and that its address is correctly set.", pzem->_address);
         }
 
         _instances[i] = pzem;
@@ -496,7 +494,7 @@ bool Mycila::PZEM::_add(PZEM* pzem) {
 
       } else {
         if (!_canRead(pzem->_serial, pzem->_address)) {
-          LOGW(TAG, "Unable to read PZEM at address 0x%02X. Please verify that the device is powered and that its address is correctly set.", pzem->_address);
+          LOGW(TAG, "Unable to read at address 0x%02X. Please verify that the device is powered and that its address is correctly set.", pzem->_address);
         }
         _instances[i] = pzem;
       }
