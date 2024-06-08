@@ -1,6 +1,6 @@
 {
   "name": "MycilaPZEM004Tv3",
-  "version": "4.0.1",
+  "version": "4.0.2",
   "description": "Arduino / ESP32 library for the PZEM-004T v3 Power and Energy monitor",
   "homepage": "https://github.com/mathieucarbou/MycilaPZEM004Tv3",
   "repository": {
