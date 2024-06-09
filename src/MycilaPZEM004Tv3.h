@@ -111,7 +111,7 @@ namespace Mycila {
       float getVoltage() const { return _voltage; }
       // THDi computation based on a phi "shift" angle
       // // https://fr.electrical-installation.org/frwiki/Indicateur_de_distorsion_harmonique_:_facteur_de_puissance
-      float getTHDi(float phi) const { return sqrt(pow(cos(phi), 2) / pow(_powerFactor, 2) - 1); }
+      float getTHDi(float phi) const { return _powerFactor == 0 ? 0 : sqrt(pow(cos(phi), 2) / pow(_powerFactor, 2) - 1); }
 
       // get the uptime in milliseconds of the last successful read
       uint32_t getTime() const { return _lastReadSuccess; }
