@@ -110,6 +110,11 @@ namespace Mycila {
       float getApparentPower() const { return _powerFactor == 0 ? 0 : _power / _powerFactor; }
       float getResistance() const { return _current == 0 ? 0 : _power / (_current * _current); }
       float getVoltage() const { return _voltage; }
+      float getDimmedVoltage() const { return _current == 0 ? 0 : _power / _current; }
+      float getNominalPower() const {
+        float r = getResistance();
+        return r == 0 ? 0 : _voltage * _voltage / r;
+      }
       // THDi computation based on a phi "shift" angle
       // // https://fr.electrical-installation.org/frwiki/Indicateur_de_distorsion_harmonique_:_facteur_de_puissance
       float getTHDi(float phi) const { return _powerFactor == 0 ? 0 : sqrt(pow(cos(phi), 2) / pow(_powerFactor, 2) - 1); }
