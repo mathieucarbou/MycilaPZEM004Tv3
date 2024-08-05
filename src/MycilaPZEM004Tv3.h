@@ -108,7 +108,7 @@ namespace Mycila {
       float getPower() const { return _power; }
       float getPowerFactor() const { return _powerFactor; }
       float getApparentPower() const { return _powerFactor == 0 ? 0 : _power / _powerFactor; }
-      float getResistance() const { return _current == 0 ? 0 : _power / (_current * _current); }
+      float getResistance() const { return _current == 0 ? 0 : abs(_power / (_current * _current)); }
       float getVoltage() const { return _voltage; }
       float getDimmedVoltage() const { return _current == 0 ? 0 : _power / _current; }
       float getNominalPower() const {
