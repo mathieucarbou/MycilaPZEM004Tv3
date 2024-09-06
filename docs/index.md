@@ -1,8 +1,14 @@
 # MycilaPZEM004Tv3
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Continuous Integration](https://github.com/mathieucarbou/MycilaPZEM004Tv3/actions/workflows/ci.yml/badge.svg)](https://github.com/mathieucarbou/MycilaPZEM004Tv3/actions/workflows/ci.yml)
+[![Latest Release](https://img.shields.io/github/release/mathieucarbou/MycilaPZEM004Tv3.svg)](https://GitHub.com/mathieucarbou/MycilaPZEM004Tv3/releases/)
 [![PlatformIO Registry](https://badges.registry.platformio.org/packages/mathieucarbou/library/MycilaPZEM004Tv3.svg)](https://registry.platformio.org/libraries/mathieucarbou/MycilaPZEM004Tv3)
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](code_of_conduct.md)
+
+[![Build](https://github.com/mathieucarbou/MycilaPZEM004Tv3/actions/workflows/ci.yml/badge.svg)](https://github.com/mathieucarbou/MycilaPZEM004Tv3/actions/workflows/ci.yml)
+[![GitHub latest commit](https://badgen.net/github/last-commit/mathieucarbou/MycilaPZEM004Tv3)](https://GitHub.com/mathieucarbou/MycilaPZEM004Tv3/commit/)
+[![Gitpod Ready-to-Code](https://img.shields.io/badge/Gitpod-Ready--to--Code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/mathieucarbou/MycilaPZEM004Tv3)
 
 Arduino / ESP32 library for the PZEM-004T v3 Power and Energy monitor
 
