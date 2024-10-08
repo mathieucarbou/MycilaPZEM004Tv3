@@ -405,12 +405,12 @@ bool Mycila::PZEM::read() {
     return false;
   }
 
-  float voltage = ((uint32_t)buffer[3] << 8 | (uint32_t)buffer[4]) / 10.0;                                                              // Raw voltage in 0.1V
-  float current = ((uint32_t)buffer[5] << 8 | (uint32_t)buffer[6] | (uint32_t)buffer[7] << 24 | (uint32_t)buffer[8] << 16) / 1000.0;    // Raw current in 0.001A
-  float power = ((uint32_t)buffer[9] << 8 | (uint32_t)buffer[10] | (uint32_t)buffer[11] << 24 | (uint32_t)buffer[12] << 16) / 10.0;     // Raw power in 0.1W
-  float energy = ((uint32_t)buffer[13] << 8 | (uint32_t)buffer[14] | (uint32_t)buffer[15] << 24 | (uint32_t)buffer[16] << 16) / 1000.0; // Raw Energy in 1Wh
-  float frequency = ((uint32_t)buffer[17] << 8 | (uint32_t)buffer[18]) / 10.0;                                                          // Raw Frequency in 0.1Hz
-  float powerFactor = ((uint32_t)buffer[19] << 8 | (uint32_t)buffer[20]) / 100.0;                                                       // Raw pf in 0.01
+  float voltage = (static_cast<uint32_t>(buffer[3]) << 8 | static_cast<uint32_t>(buffer[4])) / 10.0;                                                                                        // Raw voltage in 0.1V
+  float current = (static_cast<uint32_t>(buffer[5]) << 8 | static_cast<uint32_t>(buffer[6] | static_cast<uint32_t>(buffer[7]) << 24 | static_cast<uint32_t>(buffer[8]) << 16)) / 1000.0;    // Raw current in 0.001A
+  float power = (static_cast<uint32_t>(buffer[9]) << 8 | static_cast<uint32_t>(buffer[10] | static_cast<uint32_t>(buffer[11]) << 24 | static_cast<uint32_t>(buffer[12]) << 16)) / 10.0;     // Raw power in 0.1W
+  float energy = (static_cast<uint32_t>(buffer[13]) << 8 | static_cast<uint32_t>(buffer[14] | static_cast<uint32_t>(buffer[15]) << 24 | static_cast<uint32_t>(buffer[16]) << 16)) / 1000.0; // Raw Energy in 1Wh
+  float frequency = (static_cast<uint32_t>(buffer[17]) << 8 | static_cast<uint32_t>(buffer[18])) / 10.0;                                                                                    // Raw Frequency in 0.1Hz
+  float powerFactor = (static_cast<uint32_t>(buffer[19]) << 8 | static_cast<uint32_t>(buffer[20])) / 100.0;                                                                                 // Raw pf in 0.01
 
   bool changed = voltage != _voltage ||
                  current != _current ||
@@ -524,7 +524,7 @@ uint8_t Mycila::PZEM::readAddress(bool update) {
   const size_t count = _timedRead(_serial, buffer, PZEM_ADDR_RESPONSE_SIZE);
 
   if (count == PZEM_ADDR_RESPONSE_SIZE) {
-    address = ((uint32_t)buffer[3] << 8 | (uint32_t)buffer[4]);
+    address = (static_cast<uint32_t>(buffer[3]) << 8 | static_cast<uint32_t>(buffer[4]));
     if (update) {
       _address = address;
     }
@@ -679,7 +679,7 @@ bool Mycila::PZEM::_crcCheck(const uint8_t* buf, uint16_t len) {
   if (len <= 2)
     return false;
   uint16_t crc = _crc16(buf, len - 2); // Compute CRC of data
-  return ((uint16_t)buf[len - 2] | (uint16_t)buf[len - 1] << 8) == crc;
+  return (static_cast<uint16_t>(buf[len - 2]) | static_cast<uint16_t>(buf[len - 1]) << 8) == crc;
 }
 
 uint16_t Mycila::PZEM::_crc16(const uint8_t* data, uint16_t len) {
@@ -688,7 +688,7 @@ uint16_t Mycila::PZEM::_crc16(const uint8_t* data, uint16_t len) {
   while (len--) {
     nTemp = *data++ ^ crc;
     crc >>= 8;
-    crc ^= (uint16_t)pgm_read_word(&crcTable[nTemp]);
+    crc ^= static_cast<uint16_t>(pgm_read_word(&crcTable[nTemp]));
   }
   return crc;
 }
