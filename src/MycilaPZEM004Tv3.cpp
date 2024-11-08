@@ -20,18 +20,34 @@ extern Mycila::Logger logger;
 
 #define TAG "PZEM004T"
 
-#define PZEM_BAUD_RATE 9600
+#define PZEM_BAUD_RATE    9600
+#define PZEM_TIMEOUT      200
+#define PZEM_LOCK_TIMEOUT 2000
 
-#define PZEM_CMD_RHR  0x03
-#define PZEM_CMD_RIR  0X04
-#define PZEM_CMD_WSR  0x06
-#define PZEM_CMD_REST 0x42
+#define PZEM_CMD_RHR  0x03 // Read holding register
+#define PZEM_CMD_RIR  0X04 // Read input register
+#define PZEM_CMD_WSR  0x06 // Write single register
+#define PZEM_CMD_REST 0x42 // Reset Energy
 
-#define PZEM_WREG_ADDR 0x0002
+#define PZEM_REGISTER_ADDRESS 0x0002
 
-#define PZEM_READ_RESPONSE_SIZE  25
-#define PZEM_RESET_RESPONSE_SIZE 5
-#define PZEM_ADDR_RESPONSE_SIZE  7
+#define PZEM_REGISTER_VOLTAGE   0x0000
+#define PZEM_REGISTER_CURRENT   0x0001 // 0x0001 (low) 0x0002 (high)
+#define PZEM_REGISTER_POWER     0x0003 // 0x0003 (low) 0x0004 (high)
+#define PZEM_REGISTER_ENERGY    0x0005 // 0x0005 (low) 0x0006 (high)
+#define PZEM_REGISTER_FREQUENCY 0x0007
+#define PZEM_REGISTER_PF        0x0008
+
+#define PZEM_REGISTER_LEN   2 // 2 bytes per register
+#define PZEM_REGISTER_COUNT 9 // 9 registers
+
+#define PZEM_RESPONSE_SIZE_READ_METRICS 23 // address(1), cmd(1), len(1), data(9*2), crc(2)
+#define PZEM_RESPONSE_SIZE_READ_ADDR    7  // address(1), cmd(1), len(1), address(2), crc(2)
+#define PZEM_RESPONSE_SIZE_RESET        4  // address(1), cmd(1), crc(2)
+#define PZEM_RESPONSE_SIZE_SET_ADDR     8  // address(1), cmd(1), len(1), register(1), data(2), crc(2)
+
+#define PZEM_RESPONSE_READ_DATA 3
+#define PZEM_RESPONSE_ADDRESS   0
 
 #ifndef GPIO_IS_VALID_OUTPUT_GPIO
   #define GPIO_IS_VALID_OUTPUT_GPIO(gpio_num) ((gpio_num >= 0) && \
@@ -330,217 +346,223 @@ void Mycila::PZEM::begin(HardwareSerial& serial,
     return;
   }
 
-  if (address < 0x01 || address > MYCILA_PZEM_DEFAULT_ADDRESS) {
+  if (address < MYCILA_PZEM_ADDRESS_MIN || address > MYCILA_PZEM_ADDRESS_GENERAL) {
     LOGE(TAG, "Disable PZEM: Invalid address: 0x%02X", address);
     return;
   }
-
-  LOGI(TAG, "[0x%02X] Enable PZEM: Serial RX (PZEM TX Pin): %" PRId8 ", Serial TX (PZEM RX Pin): %" PRId8, address, rxPin, txPin);
 
   _serial = &serial;
   _address = address;
 
   if (async) {
-    if (!_add(this))
-      return;
+    LOGI(TAG, "Enable PZEM @ 0x%02X on Serial RX (PZEM TX Pin): %" PRId8 " and Serial TX (PZEM RX Pin): %" PRId8, address, rxPin, txPin);
+    _enabled = _add(this);
 
   } else {
-    _openSerial(&serial, _pinRX, _pinTX);
-    if (!_canRead(&serial, address)) {
-      LOGW(TAG, "[0x%02X] Unable to read PZEM. Please verify that the device is powered and that its address is correctly set.", address);
+    _enabled = true;
+    _openSerial(_pinRX, _pinTX);
+    if (_address == MYCILA_PZEM_ADDRESS_GENERAL && readDeviceAddress(true) == MYCILA_PZEM_ADDRESS_UNKNOWN) {
+      LOGE(TAG, "Unable to read any PZEM @ 0x%02X: Please verify that the device is powered on and that its address is correctly set if not using the default address", address);
+      serial.flush();
+      _drop();
+    } else {
+      LOGI(TAG, "Enable PZEM @ 0x%02X on Serial RX (PZEM TX Pin): %" PRId8 " and Serial TX (PZEM RX Pin): %" PRId8, _address, _pinRX, _pinTX);
     }
   }
-
-  _enabled = true;
 }
 
 void Mycila::PZEM::end() {
   if (_enabled) {
-    LOGI(TAG, "[0x%02X] Disable PZEM...", _address);
+    LOGI(TAG, "Disable PZEM @ 0x%02X", _address);
     _enabled = false;
     _remove(this);
-    delay(MYCILA_PZEM_READ_TIMEOUT_MS);
-    _address = MYCILA_PZEM_INVALID_ADDRESS;
-    _current = 0;
-    _frequency = 0;
-    _power = 0;
-    _powerFactor = 0;
-    _voltage = 0;
+    _lastAddress = MYCILA_PZEM_ADDRESS_UNKNOWN;
+    _address = MYCILA_PZEM_ADDRESS_GENERAL;
+    data.clear();
+    _serial->end();
   }
 }
 
-bool Mycila::PZEM::read() {
+///////////////////////////////////////////////////////////////////////////////
+// read
+///////////////////////////////////////////////////////////////////////////////
+
+bool Mycila::PZEM::read(uint8_t address) {
   if (!_enabled)
     return false;
 
-  if (!_mutex.try_lock_for(std::chrono::milliseconds(1000))) {
-    LOGW(TAG, "[0x%02X] Cannot read PZEM: Serial is busy!", _address);
+  if (!_mutex.try_lock_for(std::chrono::milliseconds(PZEM_LOCK_TIMEOUT))) {
+    LOGW(TAG, "Unable to read @ 0x%02X: Serial is busy!", address);
     return false;
   }
 
-  _sendCmd8(_serial, PZEM_CMD_RIR, 0x00, 0x0A, false, _address);
+  _send(address, PZEM_CMD_RIR, PZEM_REGISTER_VOLTAGE, PZEM_REGISTER_COUNT);
+  ReadResult result = _timedRead(address, PZEM_RESPONSE_SIZE_READ_METRICS);
 
-  uint8_t buffer[PZEM_READ_RESPONSE_SIZE];
-  const size_t count = _timedRead(_serial, buffer, PZEM_READ_RESPONSE_SIZE);
+  if (result == ReadResult::READ_TIMEOUT) {
+    // reset live values in case of read timeout
+    data.clear();
+    _mutex.unlock();
+    if (_callback) {
+      _callback(EventType::EVT_READ_TIMEOUT);
+    }
+    return false;
+  }
+
+  if (result == ReadResult::READ_ERROR_COUNT || result == ReadResult::READ_ERROR_CRC) {
+    // reset live values in case of read failure
+    data.clear();
+    _mutex.unlock();
+    if (_callback) {
+      _callback(EventType::EVT_READ_ERROR);
+    }
+    return false;
+  }
+
+  if (result == ReadResult::READ_ERROR_ADDRESS) {
+    // we have set a destination address, but we read another device
+    _mutex.unlock();
+    if (_callback) {
+      _callback(EventType::EVT_READ_ERROR);
+    }
+    return false;
+  }
+
+  assert(result == ReadResult::READ_SUCCESS);
+
+  Data parsed;
+
+  parsed.voltage = (static_cast<uint32_t>(_buffer[3]) << 8 | static_cast<uint32_t>(_buffer[4])) / 10.0;                                                                                                // Raw voltage in 0.1V
+  parsed.current = (static_cast<uint32_t>(_buffer[5]) << 8 | static_cast<uint32_t>(_buffer[6] | static_cast<uint32_t>(_buffer[7]) << 24 | static_cast<uint32_t>(_buffer[8]) << 16)) / 1000.0;          // Raw current in 0.001A
+  parsed.activePower = (static_cast<uint32_t>(_buffer[9]) << 8 | static_cast<uint32_t>(_buffer[10] | static_cast<uint32_t>(_buffer[11]) << 24 | static_cast<uint32_t>(_buffer[12]) << 16)) / 10.0;     // Raw power in 0.1W
+  parsed.activeEnergy = (static_cast<uint32_t>(_buffer[13]) << 8 | static_cast<uint32_t>(_buffer[14] | static_cast<uint32_t>(_buffer[15]) << 24 | static_cast<uint32_t>(_buffer[16]) << 16)) / 1000.0; // Raw Energy in 1Wh
+  parsed.frequency = (static_cast<uint32_t>(_buffer[17]) << 8 | static_cast<uint32_t>(_buffer[18])) / 10.0;                                                                                            // Raw Frequency in 0.1Hz
+  parsed.powerFactor = (static_cast<uint32_t>(_buffer[19]) << 8 | static_cast<uint32_t>(_buffer[20])) / 100.0;                                                                                         // Raw pf in 0.01
+
+  // calculate remaining metrics
+
+  // S = P / PF
+  parsed.apparentPower = parsed.powerFactor == 0 ? 0 : abs(parsed.activePower / parsed.powerFactor);
+  // Q = sqrt(S^2 - P^2)
+  parsed.reactivePower = sqrt(parsed.apparentPower * parsed.apparentPower - parsed.activePower * parsed.activePower);
+
+  bool changed = data != parsed;
+
+  if (changed)
+    data = parsed;
+
+  _time = millis();
 
   _mutex.unlock();
 
-  if (!count) {
-    _current = 0;
-    _frequency = 0;
-    _power = 0;
-    _powerFactor = 0;
-    _voltage = 0;
-    // timeout or no electricity
-    return false;
-  }
-
-  if (count != PZEM_READ_RESPONSE_SIZE) {
-    _current = 0;
-    _frequency = 0;
-    _power = 0;
-    _powerFactor = 0;
-    _voltage = 0;
-    LOGD(TAG, "[0x%02X] Read failed: %d", _address, count);
-    return false;
-  }
-
-  float voltage = (static_cast<uint32_t>(buffer[3]) << 8 | static_cast<uint32_t>(buffer[4])) / 10.0;                                                                                        // Raw voltage in 0.1V
-  float current = (static_cast<uint32_t>(buffer[5]) << 8 | static_cast<uint32_t>(buffer[6] | static_cast<uint32_t>(buffer[7]) << 24 | static_cast<uint32_t>(buffer[8]) << 16)) / 1000.0;    // Raw current in 0.001A
-  float power = (static_cast<uint32_t>(buffer[9]) << 8 | static_cast<uint32_t>(buffer[10] | static_cast<uint32_t>(buffer[11]) << 24 | static_cast<uint32_t>(buffer[12]) << 16)) / 10.0;     // Raw power in 0.1W
-  float energy = (static_cast<uint32_t>(buffer[13]) << 8 | static_cast<uint32_t>(buffer[14] | static_cast<uint32_t>(buffer[15]) << 24 | static_cast<uint32_t>(buffer[16]) << 16)) / 1000.0; // Raw Energy in 1Wh
-  float frequency = (static_cast<uint32_t>(buffer[17]) << 8 | static_cast<uint32_t>(buffer[18])) / 10.0;                                                                                    // Raw Frequency in 0.1Hz
-  float powerFactor = (static_cast<uint32_t>(buffer[19]) << 8 | static_cast<uint32_t>(buffer[20])) / 100.0;                                                                                 // Raw pf in 0.01
-
-  bool changed = voltage != _voltage ||
-                 current != _current ||
-                 power != _power ||
-                 energy != _energy ||
-                 frequency != _frequency ||
-                 powerFactor != _powerFactor;
-
-  if (changed) {
-    _voltage = voltage;
-    _current = current;
-    _power = power;
-    _energy = energy;
-    _frequency = frequency;
-    _powerFactor = powerFactor;
-  }
-
-  _lastReadSuccess = millis();
-
   if (_callback) {
-    _callback(PZEMEventType::EVT_READ);
+    _callback(EventType::EVT_READ);
     if (changed) {
-      _callback(PZEMEventType::EVT_CHANGE);
+      _callback(EventType::EVT_CHANGE);
     }
   }
 
   return true;
 }
 
-bool Mycila::PZEM::resetEnergy() {
+///////////////////////////////////////////////////////////////////////////////
+// resetEnergy
+///////////////////////////////////////////////////////////////////////////////
+
+bool Mycila::PZEM::resetEnergy(uint8_t address) {
   if (!_enabled)
     return false;
 
-  if (!_mutex.try_lock_for(std::chrono::milliseconds(1000))) {
-    LOGW(TAG, "[0x%02X] Cannot reset PZEM: Serial is busy!", _address);
+  LOGD(TAG, "resetEnergy(0x%02X)", address);
+
+  if (!_mutex.try_lock_for(std::chrono::milliseconds(PZEM_LOCK_TIMEOUT))) {
+    LOGW(TAG, "Unable to reset @ 0x%02X: Serial is busy!", address);
     return false;
   }
 
-  LOGI(TAG, "[0x%02X] Reset Energy data...", _address);
+  _buffer[0] = address;
+  _buffer[1] = PZEM_CMD_REST;
+  _crcSet(_buffer, 4);
 
-  uint8_t request[] = {0x00, PZEM_CMD_REST, 0x00, 0x00};
-  request[0] = _address;
-  _crcSet(request, 4);
+  _serial->write(_buffer, 4);
+  _serial->flush();
 
-  _serial->write(request, 4);
-
-  uint8_t response[PZEM_RESET_RESPONSE_SIZE];
-  const size_t count = _timedRead(_serial, response, PZEM_RESET_RESPONSE_SIZE);
+  ReadResult result = _timedRead(address, PZEM_RESPONSE_SIZE_RESET);
 
   _mutex.unlock();
 
-  if (!count) {
-    LOGD(TAG, "[0x%02X] Reset timeout", _address);
+  return result == ReadResult::READ_SUCCESS;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// settings
+///////////////////////////////////////////////////////////////////////////////
+
+bool Mycila::PZEM::setDeviceAddress(const uint8_t address, const uint8_t newAddress) {
+  if (!_enabled)
+    return false;
+
+  if (newAddress < 0x01 || newAddress > 0xF7) {
+    LOGE(TAG, "Invalid address: 0x%02X", newAddress);
     return false;
   }
 
-  if (count == PZEM_RESET_RESPONSE_SIZE) {
-    LOGD(TAG, "[0x%02X] Reset failed!", _address);
+  if (!_mutex.try_lock_for(std::chrono::milliseconds(PZEM_LOCK_TIMEOUT))) {
+    LOGW(TAG, "Unable to set new address @ 0x%02X: Serial is busy!", address);
     return false;
   }
+
+  LOGD(TAG, "setDeviceAddress(0x%02X, 0x%02X)", address, newAddress);
+
+  _send(address, PZEM_CMD_WSR, PZEM_REGISTER_ADDRESS, newAddress);
+  ReadResult result = _timedRead(address, PZEM_RESPONSE_SIZE_SET_ADDR);
+
+  if (result != ReadResult::READ_SUCCESS && result != ReadResult::READ_ERROR_ADDRESS) {
+    LOGD(TAG, "Unable to set address @ 0x%02X", address);
+    _mutex.unlock();
+    return false;
+  }
+
+  if (!_canRead(newAddress)) {
+    _mutex.unlock();
+    LOGE(TAG, "Unable to read PZEM @ 0x%02X", newAddress);
+    return false;
+  }
+
+  // update destination address if needed
+  if (_address != MYCILA_PZEM_ADDRESS_GENERAL && _address == address) {
+    _address = newAddress;
+  }
+
+  _mutex.unlock();
 
   return true;
 }
 
-bool Mycila::PZEM::setAddress(const uint8_t address) {
+uint8_t Mycila::PZEM::readDeviceAddress(bool update) {
   if (!_enabled)
     return false;
 
-  if (address < 0x01 || address > 0xF7)
-    return false;
-
-  if (_address == address)
-    return true;
-
-  if (!_mutex.try_lock_for(std::chrono::milliseconds(1000))) {
-    LOGW(TAG, "[0x%02X] Cannot set address: Serial is busy!", _address);
+  if (!_mutex.try_lock_for(std::chrono::milliseconds(PZEM_LOCK_TIMEOUT))) {
+    LOGW(TAG, "Unable to read address @ 0x%02X: Serial is busy!", MYCILA_PZEM_ADDRESS_GENERAL);
     return false;
   }
 
-  LOGI(TAG, "[0x%02X] Set address to 0x%02X...", _address, address);
+  uint8_t address = MYCILA_PZEM_ADDRESS_UNKNOWN;
 
-  const bool success = _sendCmd8(_serial, PZEM_CMD_WSR, PZEM_WREG_ADDR, address, true, _address);
+  _send(MYCILA_PZEM_ADDRESS_GENERAL, PZEM_CMD_RHR, PZEM_REGISTER_ADDRESS, 1);
+  ReadResult result = _timedRead(MYCILA_PZEM_ADDRESS_GENERAL, PZEM_RESPONSE_SIZE_READ_ADDR);
 
-  if (success) {
-    _address = address;
-  }
-
-  _mutex.unlock();
-
-  if (!success) {
-    LOGD(TAG, "[0x%02X] Set address failed!", _address);
-  }
-
-  return success;
-}
-
-uint8_t Mycila::PZEM::readAddress(bool update) {
-  if (!_enabled)
-    return false;
-
-  if (!_mutex.try_lock_for(std::chrono::milliseconds(1000))) {
-    LOGW(TAG, "[0x%02X] Cannot read address: Serial is busy!", _address);
-    return false;
-  }
-
-  uint8_t address = MYCILA_PZEM_INVALID_ADDRESS;
-
-  _sendCmd8(_serial, PZEM_CMD_RHR, PZEM_WREG_ADDR, 0x01, false, _address);
-
-  uint8_t buffer[PZEM_ADDR_RESPONSE_SIZE];
-  const size_t count = _timedRead(_serial, buffer, PZEM_ADDR_RESPONSE_SIZE);
-
-  if (count == PZEM_ADDR_RESPONSE_SIZE) {
-    address = (static_cast<uint32_t>(buffer[3]) << 8 | static_cast<uint32_t>(buffer[4]));
+  if (result == ReadResult::READ_SUCCESS) {
+    address = _buffer[4];
     if (update) {
       _address = address;
     }
+  } else {
+    LOGD(TAG, "Unable to read address @ 0x%02X", MYCILA_PZEM_ADDRESS_GENERAL);
   }
 
   _mutex.unlock();
-
-  if (!count) {
-    LOGD(TAG, "[0x%02X] Read address timeout", _address);
-    return MYCILA_PZEM_INVALID_ADDRESS;
-  }
-
-  if (count != PZEM_ADDR_RESPONSE_SIZE) {
-    LOGD(TAG, "[0x%02X] Read address failed!", _address);
-    return MYCILA_PZEM_INVALID_ADDRESS;
-  }
 
   return address;
 }
@@ -552,120 +574,162 @@ size_t Mycila::PZEM::search(uint8_t* addresses, const size_t maxCount) {
   if (maxCount == 0)
     return 0;
 
-  uint8_t buffer[PZEM_ADDR_RESPONSE_SIZE];
+  if (!_mutex.try_lock_for(std::chrono::milliseconds(PZEM_LOCK_TIMEOUT))) {
+    LOGW(TAG, "Unable to search: Serial is busy!");
+    return 0;
+  }
+
   size_t count = 0;
 
-  for (uint16_t address = 0x01; address <= MYCILA_PZEM_DEFAULT_ADDRESS && count < maxCount; address++) {
-    if (!_mutex.try_lock_for(std::chrono::milliseconds(1000))) {
-      LOGW(TAG, "[0x%02X] Cannot search: Serial is busy!", _address);
-      break;
+  for (uint8_t address = MYCILA_PZEM_ADDRESS_MIN; address <= MYCILA_PZEM_ADDRESS_MAX && count < maxCount; address++) {
+    _send(address, PZEM_CMD_RHR, PZEM_REGISTER_ADDRESS, 1);
+    if (_timedRead(address, PZEM_RESPONSE_SIZE_READ_ADDR) == ReadResult::READ_SUCCESS) {
+      addresses[count++] = address;
+      LOGD(TAG, "Found PZEM @ 0x%02X", address);
     }
-
-    _sendCmd8(_serial, PZEM_CMD_RIR, 0x00, 0x01, false, address);
-    const size_t nRead = _timedRead(_serial, buffer, PZEM_ADDR_RESPONSE_SIZE);
-
-    _mutex.unlock();
-
-    if (nRead == 0) {
-      // LOGD(TAG, "Search timeout on address 0x%02X", address);
-      yield();
-      continue;
-    }
-
-    if (nRead != PZEM_ADDR_RESPONSE_SIZE) {
-      LOGD(TAG, "[0x%02X] Search response error", _address);
-      yield();
-      continue;
-    }
-
-    LOGD(TAG, "[0x%02X] Found device at address: 0x%02X", _address, address);
-    addresses[count++] = address;
     yield();
   }
 
+  _mutex.unlock();
+
   return count;
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// toJson
+///////////////////////////////////////////////////////////////////////////////
 
 #ifdef MYCILA_JSON_SUPPORT
 void Mycila::PZEM::toJson(const JsonObject& root) const {
-  root["address"] = _address;
-  root["current"] = _current;
   root["enabled"] = _enabled;
-  root["energy"] = _energy;
-  root["frequency"] = _frequency;
-  root["power_factor"] = _powerFactor;
-  root["power"] = _power;
-  root["voltage"] = _voltage;
-  root["time"] = _lastReadSuccess;
+  root["address"] = _address;
+  root["time"] = _time;
+  data.toJson(root);
 }
 #endif
 
-size_t Mycila::PZEM::_timedRead(HardwareSerial* serial, uint8_t* buffer, size_t length) {
-  // const uint32_t now = millis();
-  const size_t count = serial->readBytes(buffer, length) + _drop(serial);
-  if (count == 0) {
-    // LOGD(TAG, "Read timeout");
-    return count;
-  }
-  // LOGD(TAG, "Read available after %d ms", millis() - now);
-  if (!_crcCheck(buffer, count)) {
-    LOGD(TAG, "CRC check error");
-    return 0;
-  }
-  return count;
-}
+///////////////////////////////////////////////////////////////////////////////
+// I/O
+///////////////////////////////////////////////////////////////////////////////
 
-size_t Mycila::PZEM::_drop(HardwareSerial* serial) {
+Mycila::PZEM::ReadResult Mycila::PZEM::_timedRead(uint8_t expectedAddress, size_t expectedLen) {
   size_t count = 0;
-  // Serial.printf("Drop: ");
-  while (serial->available()) {
-    // Serial.printf("0x%02X", _serial->read());
-    serial->read();
-    count++;
+  while (count < expectedLen) {
+    size_t read = _serial->readBytes(_buffer + count, expectedLen - count);
+    if (read) {
+      count += read;
+    } else {
+      break;
+    }
   }
-  // if (count > 0)
-  //   Serial.printf("Drop: %d\n", count);
+
+#ifdef MYCILA_PZEM_DEBUG
+  Serial.printf("[PZEM] timedRead() %d < ", count);
+  for (size_t i = 0; i < count; i++) {
+    Serial.printf("0x%02X ", _buffer[i]);
+  }
+  Serial.println();
+#endif
+
+  _drop();
+
+  // timeout ?
+  if (count == 0) {
+    // LOGD(TAG, "timedRead() timeout");
+    return ReadResult::READ_TIMEOUT;
+  }
+
+  // check length
+  if (count != expectedLen) {
+    LOGD(TAG, "timedRead() error: len %d != %d", count, expectedLen);
+    return ReadResult::READ_ERROR_COUNT;
+  }
+
+  // CRC check
+  if (!_crcCheck(_buffer, count)) {
+    LOGD(TAG, "timedRead() error: bad CRC");
+    return ReadResult::READ_ERROR_CRC;
+  }
+
+  _lastAddress = _buffer[PZEM_RESPONSE_ADDRESS];
+
+  // address check
+  if (expectedAddress != MYCILA_PZEM_ADDRESS_GENERAL && expectedAddress != _lastAddress) {
+    LOGD(TAG, "timedRead(0x%02X) error: wrong device address 0x%02X", expectedAddress, _lastAddress);
+    return ReadResult::READ_ERROR_ADDRESS;
+  }
+
+  return ReadResult::READ_SUCCESS;
+}
+
+bool Mycila::PZEM::_canRead(uint8_t address) {
+#ifdef MYCILA_PZEM_DEBUG
+  Serial.printf("[PZEM] _canRead(0x%02X)\n", address);
+#endif
+  _send(address, PZEM_CMD_RHR, PZEM_REGISTER_ADDRESS, 1);
+  return _timedRead(address, PZEM_RESPONSE_SIZE_READ_ADDR) == ReadResult::READ_SUCCESS;
+}
+
+void Mycila::PZEM::_send(uint8_t address, uint8_t cmd, uint16_t rAddr, uint16_t val) {
+  _buffer[0] = address; // Set slave address
+  _buffer[1] = cmd;     // Set command
+
+  _buffer[2] = (rAddr >> 8) & 0xFF; // Set high byte of register address
+  _buffer[3] = (rAddr) & 0xFF;      // Set low byte =//=
+
+  _buffer[4] = (val >> 8) & 0xFF; // Set high byte of register value
+  _buffer[5] = (val) & 0xFF;      // Set low byte =//=
+
+  _crcSet(_buffer, 8); // Set CRC of frame
+
+#ifdef MYCILA_PZEM_DEBUG
+  Serial.printf("[PZEM] send(0x%02X) %d > ", address, 8);
+  for (size_t i = 0; i < 8; i++) {
+    Serial.printf("0x%02X ", _buffer[i]);
+  }
+  Serial.println();
+#endif
+
+  _serial->write(_buffer, 8); // send frame
+  _serial->flush();
+}
+
+size_t Mycila::PZEM::_drop() {
+  size_t count = 0;
+  if (_serial->available()) {
+#ifdef MYCILA_PZEM_DEBUG
+    Serial.printf("[PZEM] drop < ");
+#endif
+    while (_serial->available()) {
+#ifdef MYCILA_PZEM_DEBUG
+      Serial.printf("0x%02X ", _serial->read());
+#else
+      _serial->read();
+#endif
+      count++;
+    }
+#ifdef MYCILA_PZEM_DEBUG
+    Serial.println();
+#endif
+  }
   return count;
 }
 
-bool Mycila::PZEM::_canRead(HardwareSerial* serial, uint16_t slaveAddr) {
-  _sendCmd8(serial, PZEM_CMD_RIR, 0x00, 0x0A, false, slaveAddr);
-  uint8_t buffer[PZEM_READ_RESPONSE_SIZE];
-  return _timedRead(serial, buffer, PZEM_READ_RESPONSE_SIZE) == PZEM_READ_RESPONSE_SIZE;
+void Mycila::PZEM::_openSerial(const uint8_t rxPin, const uint8_t txPin) {
+  LOGD(TAG, "openSerial()");
+  _serial->begin(PZEM_BAUD_RATE, SERIAL_8N1, rxPin, txPin);
+  _serial->setTimeout(PZEM_TIMEOUT);
+  while (!_serial)
+    yield();
+  while (!_serial->availableForWrite())
+    yield();
+  _drop();
+  _serial->flush(false);
 }
 
-bool Mycila::PZEM::_sendCmd8(HardwareSerial* serial, uint8_t cmd, uint16_t rAddr, uint16_t val, bool check, uint16_t slaveAddr) {
-  uint8_t sendBuffer[8]; // Send buffer
-
-  sendBuffer[0] = slaveAddr; // Set slave address
-  sendBuffer[1] = cmd;       // Set command
-
-  sendBuffer[2] = (rAddr >> 8) & 0xFF; // Set high byte of register address
-  sendBuffer[3] = (rAddr) & 0xFF;      // Set low byte =//=
-
-  sendBuffer[4] = (val >> 8) & 0xFF; // Set high byte of register value
-  sendBuffer[5] = (val) & 0xFF;      // Set low byte =//=
-
-  _crcSet(sendBuffer, 8); // Set CRC of frame
-
-  serial->write(sendBuffer, 8); // send frame
-  serial->flush();
-
-  if (check) {
-    uint8_t respBuffer[8];                    // Response buffer (only used when check is true)
-    if (!_timedRead(serial, respBuffer, 8)) { // if check enabled, read the response
-      return false;                           // timeout
-    }
-    // Check if response is same as send
-    for (uint8_t i = 0; i < 8; i++) {
-      if (sendBuffer[i] != respBuffer[i])
-        LOGD(TAG, "Response check error");
-      return false;
-    }
-  }
-
-  return true;
-}
+///////////////////////////////////////////////////////////////////////////////
+// CRC
+///////////////////////////////////////////////////////////////////////////////
 
 void Mycila::PZEM::_crcSet(uint8_t* buf, uint16_t len) {
   if (len <= 2)
@@ -693,15 +757,19 @@ uint16_t Mycila::PZEM::_crc16(const uint8_t* data, uint16_t len) {
   return crc;
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// static
+///////////////////////////////////////////////////////////////////////////////
+
 bool Mycila::PZEM::_add(PZEM* pzem) {
   for (size_t i = 0; i < MYCILA_PZEM_ASYNC_MAX_INSTANCES; i++) {
     if (_instances[i] == nullptr) {
       LOGD(TAG, "Adding instance at address 0x%02X to async task...", pzem->_address);
 
       if (_taskHandle == NULL) {
-        _openSerial(pzem->_serial, pzem->_pinRX, pzem->_pinTX);
+        pzem->_openSerial(pzem->_pinRX, pzem->_pinTX);
 
-        if (!_canRead(pzem->_serial, pzem->_address)) {
+        if (!pzem->_canRead(pzem->_address)) {
           LOGW(TAG, "Unable to read at address 0x%02X. Please verify that the device is powered and that its address is correctly set.", pzem->_address);
         }
 
@@ -717,7 +785,7 @@ bool Mycila::PZEM::_add(PZEM* pzem) {
         }
 
       } else {
-        if (!_canRead(pzem->_serial, pzem->_address)) {
+        if (!pzem->_canRead(pzem->_address)) {
           LOGW(TAG, "Unable to read at address 0x%02X. Please verify that the device is powered and that its address is correctly set.", pzem->_address);
         }
         _instances[i] = pzem;
@@ -763,20 +831,8 @@ void Mycila::PZEM::_pzemTask(void* params) {
       }
     }
     if (!read)
-      delay(MYCILA_PZEM_READ_TIMEOUT_MS);
+      delay(10);
   }
   _taskHandle = NULL;
   vTaskDelete(NULL);
-}
-
-void Mycila::PZEM::_openSerial(HardwareSerial* serial, const uint8_t rxPin, const uint8_t txPin) {
-  LOGD(TAG, "Open serial...");
-  serial->begin(PZEM_BAUD_RATE, SERIAL_8N1, rxPin, txPin);
-  serial->setTimeout(MYCILA_PZEM_READ_TIMEOUT_MS);
-  while (!serial)
-    yield();
-  serial->flush();
-  _drop(serial);
-  while (!serial->availableForWrite())
-    yield();
 }

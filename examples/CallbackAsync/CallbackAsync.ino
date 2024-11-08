@@ -15,9 +15,9 @@ void setup() {
   while (!Serial)
     continue;
 
-  pzem.setCallback([](const Mycila::PZEMEventType eventType) {
-    if (eventType == Mycila::PZEMEventType::EVT_CHANGE) {
-      Serial.printf(" - %" PRIu32 " EVT_CHANGE: %f V, %f A, %f W\n", millis(), pzem.getVoltage(), pzem.getCurrent(), pzem.getPower());
+  pzem.setCallback([](const Mycila::PZEM::EventType eventType) {
+    if (eventType == Mycila::PZEM::EventType::EVT_CHANGE) {
+      Serial.printf(" - %" PRIu32 " EVT_CHANGE: %f V, %f A, %f W\n", millis(), pzem.data.voltage, pzem.data.current, pzem.data.activePower);
     }
   });
 

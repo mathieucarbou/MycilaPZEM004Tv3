@@ -76,20 +76,17 @@ jobs:
       - name: Build ReadAsync
         run: arduino-cli compile --library . --warnings all -b ${{ matrix.board }} "examples/ReadAsync/ReadAsync.ino" --build-property build.extra_flags=-DMYCILA_JSON_SUPPORT
 
-      - name: Build ReadAsyncMulti
-        run: arduino-cli compile --library . --warnings all -b ${{ matrix.board }} "examples/ReadAsyncMulti/ReadAsyncMulti.ino" --build-property build.extra_flags=-DMYCILA_JSON_SUPPORT
+      - name: Build ReadMultiAsync
+        run: arduino-cli compile --library . --warnings all -b ${{ matrix.board }} "examples/ReadMultiAsync/ReadMultiAsync.ino" --build-property build.extra_flags=-DMYCILA_JSON_SUPPORT
 
       - name: Build EnergyReset
         run: arduino-cli compile --library . --warnings all -b ${{ matrix.board }} "examples/EnergyReset/EnergyReset.ino" --build-property build.extra_flags=-DMYCILA_JSON_SUPPORT
 
-      - name: Build EnergyResetAsync
-        run: arduino-cli compile --library . --warnings all -b ${{ matrix.board }} "examples/EnergyResetAsync/EnergyResetAsync.ino" --build-property build.extra_flags=-DMYCILA_JSON_SUPPORT
-
       - name: Build SetAddress
-        run: arduino-cli compile --library . --warnings all -b ${{ matrix.board }} "examples/SetAddress/SetAddress.ino"
+        run: arduino-cli compile --library . --warnings all -b ${{ matrix.board }} "examples/SetAddress/SetAddress.ino" --build-property build.extra_flags=-DMYCILA_JSON_SUPPORT
 
       - name: Build Search
-        run: arduino-cli compile --library . --warnings all -b ${{ matrix.board }} "examples/Search/Search.ino"
+        run: arduino-cli compile --library . --warnings all -b ${{ matrix.board }} "examples/Search/Search.ino" --build-property build.extra_flags=-DMYCILA_JSON_SUPPORT
 
       - name: Build PerfTest1
         run: arduino-cli compile --library . --warnings all -b ${{ matrix.board }} "examples/PerfTest1/PerfTest1.ino" --build-property build.extra_flags=-DMYCILA_JSON_SUPPORT
@@ -173,14 +170,11 @@ jobs:
       - name: Build ReadAsync
         run: PLATFORMIO_SRC_DIR="examples/ReadAsync" PIO_BOARD=${{ matrix.board }} pio run -e ${{ matrix.env }}
 
-      - name: Build ReadAsyncMulti
-        run: PLATFORMIO_SRC_DIR="examples/ReadAsyncMulti" PIO_BOARD=${{ matrix.board }} pio run -e ${{ matrix.env }}
+      - name: Build ReadMultiAsync
+        run: PLATFORMIO_SRC_DIR="examples/ReadMultiAsync" PIO_BOARD=${{ matrix.board }} pio run -e ${{ matrix.env }}
 
       - name: Build EnergyReset
         run: PLATFORMIO_SRC_DIR="examples/EnergyReset" PIO_BOARD=${{ matrix.board }} pio run -e ${{ matrix.env }}
-
-      - name: Build EnergyResetAsync
-        run: PLATFORMIO_SRC_DIR="examples/EnergyResetAsync" PIO_BOARD=${{ matrix.board }} pio run -e ${{ matrix.env }}
 
       - name: Build SetAddress
         run: PLATFORMIO_SRC_DIR="examples/SetAddress" PIO_BOARD=${{ matrix.board }} pio run -e ${{ matrix.env }}

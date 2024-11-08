@@ -32,12 +32,67 @@ This project is an adaptation of the project above, focusing only on ESP32 and a
 - Available metrics:
 
 ```c++
-    volatile float current = 0; // A
-    volatile float energy = 0; // kWh
-    volatile float power = 0; // W
-    volatile float powerFactor = 0;
-    volatile float voltage = 0; // V
-    volatile uint8_t frequency = 0; // Hz
+          float frequency = NAN; // Hz
+
+          /**
+           * @brief Voltage in volts (V).
+           */
+          float voltage = NAN;
+
+          /**
+           * @brief Current in amperes (A).
+           */
+          float current = NAN;
+
+          /**
+           * @brief Active power in watts (W).
+           */
+          float activePower = NAN;
+
+          /**
+           * @brief Power factor
+           */
+          float powerFactor = NAN;
+
+          /**
+           * @brief Apparent power in volt-amperes (VA).
+           */
+          float apparentPower = NAN;
+
+          /**
+           * @brief Reactive power in volt-amperes reactive (VAr).
+           */
+          float reactivePower = NAN;
+
+          /**
+           * @brief Active energy in kilowatt-hours (kWh).
+           */
+          float activeEnergy = NAN;
+
+          /**
+           * @brief Compute the total harmonic distortion of current (THDi).
+           * See: https://fr.electrical-installation.org/frwiki/Indicateur_de_distorsion_harmonique_:_facteur_de_puissance
+           * @param phi The phase shift angle in radians (1 for resistive load)
+           * @return The total harmonic distortion of current (THDi)
+           */
+          float thdi(float phi = 1) const;
+
+          /**
+           * @brief Compute the resistance of the load in ohms (R = P / I^2).
+           */
+          float resistance() const;
+
+          /**
+           * @brief Compute the dimmed voltage (V = P / I).
+           * @note The dimmed voltage is the voltage that would be measured at the output of a TRIAC, SSR or voltage regulator device.
+           */
+          float dimmedVoltage() const;
+
+          /**
+           * @brief Compute the nominal power of the load in watts (P = V^2 / R).
+           * @note The voltage is the nominal voltage measured by the device and R is the measured resistance of the load, which can be regulated by a TRIAC, SSR or voltage regulator.
+           */
+          float nominalPower() const;
 ```
 
 ## Usage
@@ -52,12 +107,16 @@ There is a getter for each metric.
 Mycila::PZEM pzem;
 
 void setup() {
-  pzem.begin(Serial1, 14, 27);
+  pzem.begin(Serial1, 14, 27); // auto-detect
+  pzem.begin(Serial1, 14, 27, 0x02); // specific address
 }
 
 void loop() {
   if (pzem.read()) {
     // access values
+    pzem.data.voltage;
+    pzem.data.activePower;
+    // ...
   }
   delay(1000);
 }
@@ -84,10 +143,10 @@ pzem.resetEnergy();
 ### Read and set address
 
 ```c++
-pzem.readAddress();
-pzem.readAddress(true); // will read teh address and use it as the new address
+pzem.readDeviceAddress();
+pzem.readDeviceAddress(true); // will read the address and use it as the new address
 
-pzem.setAddress(0x42);
+pzem.setDeviceAddress(0x42);
 ```
 
 ### Start a PZEM with a specific address
@@ -116,7 +175,7 @@ If you need it, please add this compilation flag to activate it: `-D MYCILA_JSON
 
 ### Callbacks
 
-- `PZEMCallback`: called when the PZEM has read the data and when a change for any of the metric is detected.
+- `PZEM::Callback`: called when the PZEM has read the data and when a change for any of the metric is detected.
   This is useful to be notified exactly when required.
   You must check the event type
 
@@ -125,13 +184,13 @@ If you need it, please add this compilation flag to activate it: `-D MYCILA_JSON
 Reading a load for 2 second after it is turned on:
 
 ```c++
-  pzem.setCallback([](const Mycila::PZEMEventType eventType) {
+  pzem.setCallback([](const Mycila::EventType eventType) {
     int64_t now = esp_timer_get_time();
     switch (eventType) {
-      case Mycila::PZEMEventType::EVT_READ:
+      case Mycila::EventType::EVT_READ:
         Serial.printf(" - %" PRId64 " EVT_READ\n", now);
         break;
-      case Mycila::PZEMEventType::EVT_CHANGE:
+      case Mycila::EventType::EVT_CHANGE:
         Serial.printf(" - %" PRIu32 " EVT_CHANGE: %f V, %f A, %f W\n", millis(), pzem.getVoltage(), pzem.getCurrent(), pzem.getPower());
         break;
       default:

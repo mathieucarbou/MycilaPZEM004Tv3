@@ -11,12 +11,6 @@
 #include <ArduinoJson.h>
 #include <MycilaPZEM004Tv3.h>
 
-#define PZEM_ADDRESS 0x01
-
-#ifndef PZEM_ADDRESS
-#define PZEM_ADDRESS MYCILA_PZEM_DEFAULT_ADDRESS
-#endif
-
 Mycila::PZEM pzem;
 
 void setup() {
@@ -24,7 +18,7 @@ void setup() {
   while (!Serial)
     continue;
 
-  pzem.begin(Serial1, 14, 27, PZEM_ADDRESS, true);
+  pzem.begin(Serial1, 14, 27, 0x01, true);
 }
 
 void loop() {
@@ -32,6 +26,7 @@ void loop() {
   if (pzem.isEnabled()) {
     JsonDocument doc;
     pzem.toJson(doc.to<JsonObject>());
+    Serial.printf("0x%02X ", pzem.getDeviceAddress());
     serializeJson(doc, Serial);
     Serial.println();
   }

@@ -1,13 +1,12 @@
 /*
-  * This example shows how to set an address to a PZEM004Tv3 device.
-  *
-  * The circuit:
-  * - PZEM004Tv3 connected to Serial1 (RX=14, TX=27)
-*/
+ * This example shows how to set an address to a PZEM004Tv3 device.
+ *
+ * The circuit:
+ * - PZEM004Tv3 connected to Serial1 (RX=14, TX=27)
+ */
 #include <Arduino.h>
+#include <ArduinoJson.h>
 #include <MycilaPZEM004Tv3.h>
-
-#define TARGET_ADDRESS 0x42
 
 Mycila::PZEM pzem;
 
@@ -16,36 +15,38 @@ void setup() {
   while (!Serial)
     continue;
 
-  pzem.begin(Serial1, 14, 27);
+  JsonDocument doc;
 
-  while (true) {
-    uint8_t address = pzem.readAddress();
-    Serial.printf("Address: 0x%02X\n", address);
-    if (address == TARGET_ADDRESS) {
-      break;
-    }
-    if (address != MYCILA_PZEM_INVALID_ADDRESS)
-      pzem.setAddress(TARGET_ADDRESS);
-    delay(1000);
+  pzem.begin(Serial1, 14, 27);
+  uint8_t address = pzem.getDeviceAddress();
+
+  pzem.read();
+  pzem.toJson(doc.to<JsonObject>());
+  Serial.printf("0x%02X ", pzem.getDeviceAddress());
+  serializeJson(doc, Serial);
+  Serial.println();
+
+  address += 100;
+  if (pzem.setDeviceAddress(address)) {
+    Serial.printf("Address set to 0x%02X\n", pzem.getDeviceAddress());
+  }
+
+  pzem.read();
+  pzem.toJson(doc.to<JsonObject>());
+  Serial.printf("0x%02X ", pzem.getDeviceAddress());
+  serializeJson(doc, Serial);
+  Serial.println();
+
+  // uint8_t finalAddress = 0x01;
+  // uint8_t finalAddress = 0x02;
+  uint8_t finalAddress = 0x03;
+  if (pzem.setDeviceAddress(finalAddress)) {
+    Serial.printf("Address set to 0x%02X\n", pzem.getDeviceAddress());
   }
 
   pzem.end();
-
-  pzem.begin(Serial1, 14, 27, TARGET_ADDRESS);
 }
 
 void loop() {
-  delay(1000);
-  if (pzem.read()) {
-    uint8_t address = pzem.readAddress();
-    Serial.printf("Address: 0x%02X\n", address);
-
-    Serial.print("Power: ");
-    Serial.print(pzem.getPower());
-    Serial.println("W");
-
-    Serial.print("Voltage: ");
-    Serial.print(pzem.getVoltage());
-    Serial.println("V");
-  }
+  vTaskDelete(NULL);
 }

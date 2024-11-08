@@ -30,7 +30,7 @@ void loop() {
   if (pzem1.isEnabled()) {
     JsonDocument doc;
     pzem1.toJson(doc.to<JsonObject>());
-    Serial.print("0x01: ");
+    Serial.printf("0x%02X ", pzem1.getDeviceAddress());
     serializeJson(doc, Serial);
     Serial.println();
   }
@@ -38,7 +38,7 @@ void loop() {
   if (pzem2.isEnabled()) {
     JsonDocument doc;
     pzem2.toJson(doc.to<JsonObject>());
-    Serial.print("0x02: ");
+    Serial.printf("0x%02X ", pzem2.getDeviceAddress());
     serializeJson(doc, Serial);
     Serial.println();
   }

@@ -1,13 +1,13 @@
 /*
-  * This example shows how to reset the energy counter of the PZEM004Tv3
-  * when the energy consumed is greater than 0.002 kWh.
-  *
-  * The circuit:
-  * - PZEM004Tv3 connected to Serial1 (RX=14, TX=27)
-  *
-  * Compile with -D MYCILA_JSON_SUPPORT to enable JSON support
-  * Add ArduinoJson library to your project
-*/
+ * This example shows how to reset the energy counter of the PZEM004Tv3
+ * when the energy consumed is greater than 0.002 kWh.
+ *
+ * The circuit:
+ * - PZEM004Tv3 connected to Serial1 (RX=14, TX=27)
+ *
+ * Compile with -D MYCILA_JSON_SUPPORT to enable JSON support
+ * Add ArduinoJson library to your project
+ */
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <MycilaPZEM004Tv3.h>
@@ -19,20 +19,23 @@ void setup() {
   while (!Serial)
     continue;
 
-  pzem.begin(Serial1, 14, 27);
+  JsonDocument doc;
+
+  pzem.begin(Serial1, 14, 27, 0x01);
+
+  pzem.read();
+  pzem.toJson(doc.to<JsonObject>());
+  serializeJson(doc, Serial);
+  Serial.println();
+
+  pzem.resetEnergy();
+
+  pzem.read();
+  pzem.toJson(doc.to<JsonObject>());
+  serializeJson(doc, Serial);
+  Serial.println();
 }
 
 void loop() {
-  delay(1000);
-
-  if (pzem.read()) {
-
-    JsonDocument doc;
-    pzem.toJson(doc.to<JsonObject>());
-    serializeJson(doc, Serial);
-    Serial.println();
-  }
-
-  if (pzem.getEnergy() > 0.002)
-    pzem.resetEnergy();
+  vTaskDelete(NULL);
 }

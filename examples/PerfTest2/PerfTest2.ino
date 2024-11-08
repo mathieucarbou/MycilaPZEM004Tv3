@@ -44,7 +44,7 @@ void setup() {
     Serial.printf(" - ROUND: %d\n", rounds);
 
     digitalWrite(RELAY_PIN, LOW);
-    while (pzem.getPower() > 0) {
+    while (pzem.data.activePower > 0) {
       pzem.read();
     }
 
@@ -64,7 +64,7 @@ void setup() {
     int64_t start = esp_timer_get_time();
     while (true) {
       pzem.read();
-      now = pzem.getPower();
+      now = pzem.data.activePower;
 
       if (reactivityTime == 0) {
         if (now > 0) {
@@ -90,7 +90,7 @@ void setup() {
     start = esp_timer_get_time();
     while (true) {
       pzem.read();
-      now = pzem.getPower();
+      now = pzem.data.activePower;
 
       if (now == 0) {
         break;
