@@ -32,6 +32,10 @@ This project is an adaptation of the project above, focusing only on ESP32 and a
 - Available metrics:
 
 ```c++
+          /**
+           * @brief Frequency in hertz (Hz).
+           * @note JSY1031, JSY-MK-163, JSY-MK-193, JSY-MK-194, JSY-MK-227, JSY-MK-229, JSY-MK-333
+           */
           float frequency = NAN; // Hz
 
           /**
@@ -65,17 +69,18 @@ This project is an adaptation of the project above, focusing only on ESP32 and a
           float reactivePower = NAN;
 
           /**
-           * @brief Active energy in kilowatt-hours (kWh).
+           * @brief Active energy in watt-hours (Wh).
            */
-          float activeEnergy = NAN;
+          uint32_t activeEnergy = 0;
 
           /**
-           * @brief Compute the total harmonic distortion of current (THDi).
+           * @brief Compute the total harmonic distortion percentage of current (THDi).
+           * This assumes THDu = 0 (perfect voltage sin wave).
            * See: https://fr.electrical-installation.org/frwiki/Indicateur_de_distorsion_harmonique_:_facteur_de_puissance
-           * @param phi The phase shift angle in radians (1 for resistive load)
-           * @return The total harmonic distortion of current (THDi)
+           * @param phi The phase shift angle in degrees (°) (0 for resistive load)
+           * @return The total harmonic distortion of current (THDi) as a percentage (%)
            */
-          float thdi(float phi = 1) const;
+          float thdi(float phi = 0) const;
 
           /**
            * @brief Compute the resistance of the load in ohms (R = P / I^2).

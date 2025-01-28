@@ -4,11 +4,13 @@
  */
 #include "MycilaPZEM004Tv3.h"
 
+static constexpr float DEG_TO_RAD_F = static_cast<float>(DEG_TO_RAD);
+
 float Mycila::PZEM::Data::thdi(float phi) const {
   if (powerFactor == 0)
     return NAN;
-  const float cosPhi = phi == 0 ? 1 : std::cos(phi);
-  return std::sqrt((cosPhi * cosPhi) / (powerFactor * powerFactor) - 1);
+  const float cosPhi = std::cos(phi * DEG_TO_RAD_F);
+  return 100.0f * std::sqrt((cosPhi * cosPhi) / (powerFactor * powerFactor) - 1);
 }
 
 float Mycila::PZEM::Data::resistance() const { return current == 0 ? NAN : std::abs(activePower / (current * current)); }
@@ -26,7 +28,7 @@ void Mycila::PZEM::Data::clear() {
   reactivePower = NAN;
   apparentPower = NAN;
   powerFactor = NAN;
-  activeEnergy = NAN;
+  activeEnergy = 0;
 }
 
 bool Mycila::PZEM::Data::operator==(const Mycila::PZEM::Data& other) const {
@@ -39,7 +41,7 @@ bool Mycila::PZEM::Data::operator==(const Mycila::PZEM::Data& other) const {
          (std::isnan(reactivePower) ? std::isnan(other.reactivePower) : reactivePower == other.reactivePower) &&
          (std::isnan(apparentPower) ? std::isnan(other.apparentPower) : apparentPower == other.apparentPower) &&
          (std::isnan(powerFactor) ? std::isnan(other.powerFactor) : powerFactor == other.powerFactor) &&
-         (std::isnan(activeEnergy) ? std::isnan(other.activeEnergy) : activeEnergy == other.activeEnergy);
+         (activeEnergy == other.activeEnergy);
 }
 
 void Mycila::PZEM::Data::operator=(const Mycila::PZEM::Data& other) {
@@ -72,8 +74,7 @@ void Mycila::PZEM::Data::toJson(const JsonObject& root) const {
     root["apparent_power"] = apparentPower;
   if (!std::isnan(powerFactor))
     root["power_factor"] = powerFactor;
-  if (!std::isnan(activeEnergy))
-    root["active_energy"] = activeEnergy;
+  root["active_energy"] = activeEnergy;
   float r = resistance();
   float d = dimmedVoltage();
   float n = nominalPower();
@@ -85,6 +86,6 @@ void Mycila::PZEM::Data::toJson(const JsonObject& root) const {
   if (!std::isnan(n))
     root["nominal_power"] = n;
   if (!std::isnan(t))
-    root["thdi"] = t;
+    root["thdi_0"] = t;
 }
 #endif

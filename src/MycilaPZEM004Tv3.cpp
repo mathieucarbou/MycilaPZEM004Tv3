@@ -432,12 +432,12 @@ bool Mycila::PZEM::read(uint8_t address) {
 
   Data parsed;
 
-  parsed.voltage = (static_cast<uint32_t>(_buffer[3]) << 8 | static_cast<uint32_t>(_buffer[4])) * 0.1f;                                                                                                // Raw voltage in 0.1V
-  parsed.current = (static_cast<uint32_t>(_buffer[5]) << 8 | static_cast<uint32_t>(_buffer[6] | static_cast<uint32_t>(_buffer[7]) << 24 | static_cast<uint32_t>(_buffer[8]) << 16)) * 0.001f;          // Raw current in 0.001A
-  parsed.activePower = (static_cast<uint32_t>(_buffer[9]) << 8 | static_cast<uint32_t>(_buffer[10] | static_cast<uint32_t>(_buffer[11]) << 24 | static_cast<uint32_t>(_buffer[12]) << 16)) * 0.1f;     // Raw power in 0.1W
-  parsed.activeEnergy = (static_cast<uint32_t>(_buffer[13]) << 8 | static_cast<uint32_t>(_buffer[14] | static_cast<uint32_t>(_buffer[15]) << 24 | static_cast<uint32_t>(_buffer[16]) << 16)) * 0.001f; // Raw Energy in 1Wh
-  parsed.frequency = (static_cast<uint32_t>(_buffer[17]) << 8 | static_cast<uint32_t>(_buffer[18])) * 0.1f;                                                                                            // Raw Frequency in 0.1Hz
-  parsed.powerFactor = (static_cast<uint32_t>(_buffer[19]) << 8 | static_cast<uint32_t>(_buffer[20])) * 0.01f;                                                                                         // Raw pf in 0.01
+  parsed.voltage = (static_cast<uint32_t>(_buffer[3]) << 8 | static_cast<uint32_t>(_buffer[4])) * 0.1f;                                                                                            // Raw voltage in 0.1V
+  parsed.current = (static_cast<uint32_t>(_buffer[5]) << 8 | static_cast<uint32_t>(_buffer[6] | static_cast<uint32_t>(_buffer[7]) << 24 | static_cast<uint32_t>(_buffer[8]) << 16)) * 0.001f;      // Raw current in 0.001A
+  parsed.activePower = (static_cast<uint32_t>(_buffer[9]) << 8 | static_cast<uint32_t>(_buffer[10] | static_cast<uint32_t>(_buffer[11]) << 24 | static_cast<uint32_t>(_buffer[12]) << 16)) * 0.1f; // Raw power in 0.1W
+  parsed.activeEnergy = (static_cast<uint32_t>(_buffer[13]) << 8 | static_cast<uint32_t>(_buffer[14] | static_cast<uint32_t>(_buffer[15]) << 24 | static_cast<uint32_t>(_buffer[16]) << 16));      // Raw Energy in 1Wh
+  parsed.frequency = (static_cast<uint32_t>(_buffer[17]) << 8 | static_cast<uint32_t>(_buffer[18])) * 0.1f;                                                                                        // Raw Frequency in 0.1Hz
+  parsed.powerFactor = (static_cast<uint32_t>(_buffer[19]) << 8 | static_cast<uint32_t>(_buffer[20])) * 0.01f;                                                                                     // Raw pf in 0.01
 
   // calculate remaining metrics
 

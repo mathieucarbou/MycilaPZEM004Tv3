@@ -57,6 +57,9 @@ namespace Mycila {
 
       class Data {
         public:
+          /**
+           * @brief Frequency in hertz (Hz).
+           */
           float frequency = NAN; // Hz
 
           /**
@@ -90,15 +93,16 @@ namespace Mycila {
           float reactivePower = NAN;
 
           /**
-           * @brief Active energy in kilowatt-hours (kWh).
+           * @brief Active energy in watt-hours (Wh).
            */
-          float activeEnergy = NAN;
+          uint32_t activeEnergy = 0;
 
           /**
-           * @brief Compute the total harmonic distortion of current (THDi).
+           * @brief Compute the total harmonic distortion percentage of current (THDi).
+           * This assumes THDu = 0 (perfect voltage sin wave).
            * See: https://fr.electrical-installation.org/frwiki/Indicateur_de_distorsion_harmonique_:_facteur_de_puissance
-           * @param phi The phase shift angle in radians (0 for resistive load)
-           * @return The total harmonic distortion of current (THDi)
+           * @param phi The phase shift angle in degrees (°) (0 for resistive load)
+           * @return The total harmonic distortion of current (THDi) as a percentage (%)
            */
           float thdi(float phi = 0) const;
 
