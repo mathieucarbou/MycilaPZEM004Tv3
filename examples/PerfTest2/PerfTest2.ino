@@ -8,12 +8,17 @@
 #define PZEM_ADDRESS 0x02
 
 Mycila::PZEM pzem;
+Mycila::PZEM::Data pzemData;
 JsonDocument doc;
 
 void setup() {
   Serial.begin(115200);
   while (!Serial)
     continue;
+
+  pzem.setCallback([](Mycila::PZEM::EventType eventType, const Mycila::PZEM::Data& data) {
+    pzemData = data;
+  });
 
   pzem.begin(Serial1, 14, 27, PZEM_ADDRESS, true);
 
@@ -44,7 +49,7 @@ void setup() {
     Serial.printf(" - ROUND: %d\n", rounds);
 
     digitalWrite(RELAY_PIN, LOW);
-    while (pzem.data.activePower > 0) {
+    while (pzemData.activePower > 0) {
       pzem.read();
     }
 
@@ -64,7 +69,7 @@ void setup() {
     int64_t start = esp_timer_get_time();
     while (true) {
       pzem.read();
-      now = pzem.data.activePower;
+      now = pzemData.activePower;
 
       if (reactivityTime == 0) {
         if (now > 0) {
@@ -90,7 +95,7 @@ void setup() {
     start = esp_timer_get_time();
     while (true) {
       pzem.read();
-      now = pzem.data.activePower;
+      now = pzemData.activePower;
 
       if (now == 0) {
         break;

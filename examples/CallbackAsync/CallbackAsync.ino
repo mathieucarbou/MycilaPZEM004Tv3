@@ -9,15 +9,17 @@
 #define PZEM_ADDRESS 0x02
 
 Mycila::PZEM pzem;
+Mycila::PZEM::Data prevData;
 
 void setup() {
   Serial.begin(115200);
   while (!Serial)
     continue;
 
-  pzem.setCallback([](const Mycila::PZEM::EventType eventType) {
-    if (eventType == Mycila::PZEM::EventType::EVT_CHANGE) {
-      Serial.printf(" - %" PRIu32 " EVT_CHANGE: %f V, %f A, %f W\n", millis(), pzem.data.voltage, pzem.data.current, pzem.data.activePower);
+  pzem.setCallback([](const Mycila::PZEM::EventType eventType, const Mycila::PZEM::Data& data) {
+    if (data != prevData) {
+      Serial.printf(" - %" PRIu32 " EVT_CHANGE: %f V, %f A, %f W\n", millis(), data.voltage, data.current, data.activePower);
+      prevData = data;
     }
   });
 

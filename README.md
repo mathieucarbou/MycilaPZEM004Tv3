@@ -114,13 +114,16 @@ Mycila::PZEM pzem;
 void setup() {
   pzem.begin(Serial1, 14, 27); // auto-detect
   pzem.begin(Serial1, 14, 27, 0x02); // specific address
+  pzem.setCallback([](const Mycila::PZEM::EventType eventType, const Mycila::PZEM::Data& data) {
+    // access the data
+    // data.voltage;
+    // data.activePower;
+    // ...
+  });
 }
 
 void loop() {
   if (pzem.read()) {
-    // access values
-    pzem.data.voltage;
-    pzem.data.activePower;
     // ...
   }
   delay(1000);
@@ -194,9 +197,6 @@ Reading a load for 2 second after it is turned on:
     switch (eventType) {
       case Mycila::EventType::EVT_READ:
         Serial.printf(" - %" PRId64 " EVT_READ\n", now);
-        break;
-      case Mycila::EventType::EVT_CHANGE:
-        Serial.printf(" - %" PRIu32 " EVT_CHANGE: %f V, %f A, %f W\n", millis(), pzem.getVoltage(), pzem.getCurrent(), pzem.getPower());
         break;
       default:
         Serial.printf(" - %" PRId64 " ERR\n", now);

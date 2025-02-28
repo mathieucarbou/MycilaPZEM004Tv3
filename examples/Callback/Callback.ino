@@ -5,20 +5,22 @@
 // #define RELAY_PIN 32
 
 Mycila::PZEM pzem;
+Mycila::PZEM::Data prevData;
 
 void setup() {
   Serial.begin(115200);
   while (!Serial)
     continue;
 
-  pzem.setCallback([](const Mycila::PZEM::EventType eventType) {
+  pzem.setCallback([](const Mycila::PZEM::EventType eventType, const Mycila::PZEM::Data& data) {
     int64_t now = esp_timer_get_time();
     switch (eventType) {
       case Mycila::PZEM::EventType::EVT_READ:
         Serial.printf(" - %" PRId64 " EVT_READ\n", now);
-        break;
-      case Mycila::PZEM::EventType::EVT_CHANGE:
-        Serial.printf(" - %" PRIu32 " EVT_CHANGE: %f V, %f A, %f W\n", millis(), pzem.data.voltage, pzem.data.current, pzem.data.activePower);
+        if (data != prevData) {
+          Serial.printf(" - %" PRIu32 " EVT_CHANGE: %f V, %f A, %f W\n", millis(), data.voltage, data.current, data.activePower);
+          prevData = data;
+        }
         break;
       default:
         Serial.printf(" - %" PRId64 " ERR\n", now);

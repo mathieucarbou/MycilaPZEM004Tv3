@@ -20,7 +20,6 @@ float Mycila::PZEM::Data::dimmedVoltage() const { return current == 0 ? NAN : st
 float Mycila::PZEM::Data::nominalPower() const { return activePower == 0 ? NAN : std::abs(voltage * voltage * current * current / activePower); }
 
 void Mycila::PZEM::Data::clear() {
-  std::unique_lock lock(_mutexData);
   frequency = NAN;
   voltage = NAN;
   current = NAN;
@@ -32,8 +31,6 @@ void Mycila::PZEM::Data::clear() {
 }
 
 bool Mycila::PZEM::Data::operator==(const Mycila::PZEM::Data& other) const {
-  std::shared_lock lock(_mutexData);
-  std::shared_lock lockOther(other._mutexData);
   return (std::isnan(frequency) ? std::isnan(other.frequency) : frequency == other.frequency) &&
          (std::isnan(voltage) ? std::isnan(other.voltage) : voltage == other.voltage) &&
          (std::isnan(current) ? std::isnan(other.current) : current == other.current) &&
@@ -45,8 +42,6 @@ bool Mycila::PZEM::Data::operator==(const Mycila::PZEM::Data& other) const {
 }
 
 void Mycila::PZEM::Data::operator=(const Mycila::PZEM::Data& other) {
-  std::unique_lock lock(_mutexData);
-  std::shared_lock lockOther(other._mutexData);
   frequency = other.frequency;
   voltage = other.voltage;
   current = other.current;
@@ -59,7 +54,6 @@ void Mycila::PZEM::Data::operator=(const Mycila::PZEM::Data& other) {
 
 #ifdef MYCILA_JSON_SUPPORT
 void Mycila::PZEM::Data::toJson(const JsonObject& root) const {
-  std::shared_lock lock(_mutexData);
   if (!std::isnan(frequency))
     root["frequency"] = frequency;
   if (!std::isnan(voltage))

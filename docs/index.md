@@ -114,13 +114,16 @@ Mycila::PZEM pzem;
 void setup() {
   pzem.begin(Serial1, 14, 27); // auto-detect
   pzem.begin(Serial1, 14, 27, 0x02); // specific address
+  pzem.setCallback([](const Mycila::PZEM::EventType eventType, const Mycila::PZEM::Data& data) {
+    // access the data
+    // data.voltage;
+    // data.activePower;
+    // ...
+  });
 }
 
 void loop() {
   if (pzem.read()) {
-    // access values
-    pzem.data.voltage;
-    pzem.data.activePower;
     // ...
   }
   delay(1000);

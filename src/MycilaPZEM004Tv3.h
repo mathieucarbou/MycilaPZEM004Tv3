@@ -7,7 +7,6 @@
 #include <HardwareSerial.h>
 
 #include <mutex>
-#include <shared_mutex>
 
 #ifdef MYCILA_JSON_SUPPORT
   #include <ArduinoJson.h>
@@ -47,8 +46,6 @@ namespace Mycila {
       enum class EventType {
         // PZEM has successfully read the data
         EVT_READ = 0,
-        // PZEM has successfully read the data and the values have changed
-        EVT_CHANGE,
         // wrong data received when reading values
         EVT_READ_ERROR,
         // timeout reached when reading values
@@ -139,10 +136,9 @@ namespace Mycila {
 
         private:
           friend class PZEM;
-          mutable std::shared_mutex _mutexData;
       };
 
-      typedef std::function<void(EventType eventType)> Callback;
+      typedef std::function<void(EventType eventType, const Data& data)> Callback;
 
       ~PZEM() { end(); }
 
@@ -204,15 +200,9 @@ namespace Mycila {
       uint32_t getTime() const { return _time; }
 
       // check if the device is connected to the , meaning if last read was successful
-      bool isConnected() const { return data.frequency > 0; }
+      bool isConnected() const { return _data.frequency > 0; }
 
       void setCallback(Callback callback) { _callback = callback; }
-
-    public:
-      /**
-       * @brief Access the runtime PZEM data.
-       */
-      Data data;
 
     private:
       bool _enabled = false;
@@ -224,6 +214,7 @@ namespace Mycila {
       uint8_t _buffer[32];
       uint8_t _address = MYCILA_PZEM_ADDRESS_GENERAL;
       uint8_t _lastAddress = MYCILA_PZEM_ADDRESS_UNKNOWN;
+      Data _data;
 
     private:
       enum class ReadResult {
@@ -247,7 +238,7 @@ namespace Mycila {
       static uint16_t _crc16(const uint8_t* data, uint16_t len);
 
     private:
-      static std::timed_mutex _mutex;
+      static std::mutex _mutex;
       static TaskHandle_t _taskHandle;
       static PZEM* _instances[MYCILA_PZEM_ASYNC_MAX_INSTANCES];
       static bool _add(PZEM* pzem);

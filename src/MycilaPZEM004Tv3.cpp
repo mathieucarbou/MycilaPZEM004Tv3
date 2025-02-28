@@ -20,9 +20,8 @@ extern Mycila::Logger logger;
 
 #define TAG "PZEM004T"
 
-#define PZEM_BAUD_RATE    9600
-#define PZEM_TIMEOUT      200
-#define PZEM_LOCK_TIMEOUT 2000
+#define PZEM_BAUD_RATE 9600
+#define PZEM_TIMEOUT   200
 
 #define PZEM_CMD_RHR  0x03 // Read holding register
 #define PZEM_CMD_RIR  0X04 // Read input register
@@ -320,7 +319,7 @@ static const uint16_t crcTable[] PROGMEM = {
 
 TaskHandle_t Mycila::PZEM::_taskHandle = NULL;
 Mycila::PZEM* Mycila::PZEM::_instances[MYCILA_PZEM_ASYNC_MAX_INSTANCES];
-std::timed_mutex Mycila::PZEM::_mutex;
+std::mutex Mycila::PZEM::_mutex;
 
 void Mycila::PZEM::begin(HardwareSerial& serial,
                          const int8_t rxPin,
@@ -378,7 +377,7 @@ void Mycila::PZEM::end() {
     _remove(this);
     _lastAddress = MYCILA_PZEM_ADDRESS_UNKNOWN;
     _address = MYCILA_PZEM_ADDRESS_GENERAL;
-    data.clear();
+    _data.clear();
     _serial->end();
   }
 }
@@ -391,75 +390,57 @@ bool Mycila::PZEM::read(uint8_t address) {
   if (!_enabled)
     return false;
 
-  if (!_mutex.try_lock_for(std::chrono::milliseconds(PZEM_LOCK_TIMEOUT))) {
-    LOGW(TAG, "Unable to read @ 0x%02X: Serial is busy!", address);
-    return false;
-  }
+  std::lock_guard<std::mutex> lock(_mutex);
 
   _send(address, PZEM_CMD_RIR, PZEM_REGISTER_VOLTAGE, PZEM_REGISTER_COUNT);
   ReadResult result = _timedRead(address, PZEM_RESPONSE_SIZE_READ_METRICS);
 
   if (result == ReadResult::READ_TIMEOUT) {
     // reset live values in case of read timeout
-    data.clear();
-    _mutex.unlock();
+    _data.clear();
     if (_callback) {
-      _callback(EventType::EVT_READ_TIMEOUT);
+      _callback(EventType::EVT_READ_TIMEOUT, _data);
     }
     return false;
   }
 
   if (result == ReadResult::READ_ERROR_COUNT || result == ReadResult::READ_ERROR_CRC) {
     // reset live values in case of read failure
-    data.clear();
-    _mutex.unlock();
+    _data.clear();
     if (_callback) {
-      _callback(EventType::EVT_READ_ERROR);
+      _callback(EventType::EVT_READ_ERROR, _data);
     }
     return false;
   }
 
   if (result == ReadResult::READ_ERROR_ADDRESS) {
     // we have set a destination address, but we read another device
-    _mutex.unlock();
     if (_callback) {
-      _callback(EventType::EVT_READ_ERROR);
+      _callback(EventType::EVT_READ_ERROR, _data);
     }
     return false;
   }
 
   assert(result == ReadResult::READ_SUCCESS);
 
-  Data parsed;
-
-  parsed.voltage = (static_cast<uint32_t>(_buffer[3]) << 8 | static_cast<uint32_t>(_buffer[4])) * 0.1f;                                                                                            // Raw voltage in 0.1V
-  parsed.current = (static_cast<uint32_t>(_buffer[5]) << 8 | static_cast<uint32_t>(_buffer[6] | static_cast<uint32_t>(_buffer[7]) << 24 | static_cast<uint32_t>(_buffer[8]) << 16)) * 0.001f;      // Raw current in 0.001A
-  parsed.activePower = (static_cast<uint32_t>(_buffer[9]) << 8 | static_cast<uint32_t>(_buffer[10] | static_cast<uint32_t>(_buffer[11]) << 24 | static_cast<uint32_t>(_buffer[12]) << 16)) * 0.1f; // Raw power in 0.1W
-  parsed.activeEnergy = (static_cast<uint32_t>(_buffer[13]) << 8 | static_cast<uint32_t>(_buffer[14] | static_cast<uint32_t>(_buffer[15]) << 24 | static_cast<uint32_t>(_buffer[16]) << 16));      // Raw Energy in 1Wh
-  parsed.frequency = (static_cast<uint32_t>(_buffer[17]) << 8 | static_cast<uint32_t>(_buffer[18])) * 0.1f;                                                                                        // Raw Frequency in 0.1Hz
-  parsed.powerFactor = (static_cast<uint32_t>(_buffer[19]) << 8 | static_cast<uint32_t>(_buffer[20])) * 0.01f;                                                                                     // Raw pf in 0.01
+  _data.voltage = (static_cast<uint32_t>(_buffer[3]) << 8 | static_cast<uint32_t>(_buffer[4])) * 0.1f;                                                                                            // Raw voltage in 0.1V
+  _data.current = (static_cast<uint32_t>(_buffer[5]) << 8 | static_cast<uint32_t>(_buffer[6] | static_cast<uint32_t>(_buffer[7]) << 24 | static_cast<uint32_t>(_buffer[8]) << 16)) * 0.001f;      // Raw current in 0.001A
+  _data.activePower = (static_cast<uint32_t>(_buffer[9]) << 8 | static_cast<uint32_t>(_buffer[10] | static_cast<uint32_t>(_buffer[11]) << 24 | static_cast<uint32_t>(_buffer[12]) << 16)) * 0.1f; // Raw power in 0.1W
+  _data.activeEnergy = (static_cast<uint32_t>(_buffer[13]) << 8 | static_cast<uint32_t>(_buffer[14] | static_cast<uint32_t>(_buffer[15]) << 24 | static_cast<uint32_t>(_buffer[16]) << 16));      // Raw Energy in 1Wh
+  _data.frequency = (static_cast<uint32_t>(_buffer[17]) << 8 | static_cast<uint32_t>(_buffer[18])) * 0.1f;                                                                                        // Raw Frequency in 0.1Hz
+  _data.powerFactor = (static_cast<uint32_t>(_buffer[19]) << 8 | static_cast<uint32_t>(_buffer[20])) * 0.01f;                                                                                     // Raw pf in 0.01
 
   // calculate remaining metrics
 
   // S = P / PF
-  parsed.apparentPower = parsed.powerFactor == 0 ? 0 : std::abs(parsed.activePower / parsed.powerFactor);
+  _data.apparentPower = _data.powerFactor == 0 ? 0 : std::abs(_data.activePower / _data.powerFactor);
   // Q = std::sqrt(S^2 - P^2)
-  parsed.reactivePower = std::sqrt(parsed.apparentPower * parsed.apparentPower - parsed.activePower * parsed.activePower);
-
-  bool changed = data != parsed;
-
-  if (changed)
-    data = parsed;
+  _data.reactivePower = std::sqrt(_data.apparentPower * _data.apparentPower - _data.activePower * _data.activePower);
 
   _time = millis();
 
-  _mutex.unlock();
-
   if (_callback) {
-    _callback(EventType::EVT_READ);
-    if (changed) {
-      _callback(EventType::EVT_CHANGE);
-    }
+    _callback(EventType::EVT_READ, _data);
   }
 
   return true;
@@ -475,10 +456,7 @@ bool Mycila::PZEM::resetEnergy(uint8_t address) {
 
   LOGD(TAG, "resetEnergy(0x%02X)", address);
 
-  if (!_mutex.try_lock_for(std::chrono::milliseconds(PZEM_LOCK_TIMEOUT))) {
-    LOGW(TAG, "Unable to reset @ 0x%02X: Serial is busy!", address);
-    return false;
-  }
+  std::lock_guard<std::mutex> lock(_mutex);
 
   _buffer[0] = address;
   _buffer[1] = PZEM_CMD_REST;
@@ -488,8 +466,6 @@ bool Mycila::PZEM::resetEnergy(uint8_t address) {
   _serial->flush();
 
   ReadResult result = _timedRead(address, PZEM_RESPONSE_SIZE_RESET);
-
-  _mutex.unlock();
 
   return result == ReadResult::READ_SUCCESS;
 }
@@ -507,10 +483,7 @@ bool Mycila::PZEM::setDeviceAddress(const uint8_t address, const uint8_t newAddr
     return false;
   }
 
-  if (!_mutex.try_lock_for(std::chrono::milliseconds(PZEM_LOCK_TIMEOUT))) {
-    LOGW(TAG, "Unable to set new address @ 0x%02X: Serial is busy!", address);
-    return false;
-  }
+  std::lock_guard<std::mutex> lock(_mutex);
 
   LOGD(TAG, "setDeviceAddress(0x%02X, 0x%02X)", address, newAddress);
 
@@ -519,12 +492,10 @@ bool Mycila::PZEM::setDeviceAddress(const uint8_t address, const uint8_t newAddr
 
   if (result != ReadResult::READ_SUCCESS && result != ReadResult::READ_ERROR_ADDRESS) {
     LOGD(TAG, "Unable to set address @ 0x%02X", address);
-    _mutex.unlock();
     return false;
   }
 
   if (!_canRead(newAddress)) {
-    _mutex.unlock();
     LOGE(TAG, "Unable to read PZEM @ 0x%02X", newAddress);
     return false;
   }
@@ -534,8 +505,6 @@ bool Mycila::PZEM::setDeviceAddress(const uint8_t address, const uint8_t newAddr
     _address = newAddress;
   }
 
-  _mutex.unlock();
-
   return true;
 }
 
@@ -543,10 +512,7 @@ uint8_t Mycila::PZEM::readDeviceAddress(bool update) {
   if (!_enabled)
     return false;
 
-  if (!_mutex.try_lock_for(std::chrono::milliseconds(PZEM_LOCK_TIMEOUT))) {
-    LOGW(TAG, "Unable to read address @ 0x%02X: Serial is busy!", MYCILA_PZEM_ADDRESS_GENERAL);
-    return false;
-  }
+  std::lock_guard<std::mutex> lock(_mutex);
 
   uint8_t address = MYCILA_PZEM_ADDRESS_UNKNOWN;
 
@@ -562,8 +528,6 @@ uint8_t Mycila::PZEM::readDeviceAddress(bool update) {
     LOGD(TAG, "Unable to read address @ 0x%02X", MYCILA_PZEM_ADDRESS_GENERAL);
   }
 
-  _mutex.unlock();
-
   return address;
 }
 
@@ -574,10 +538,7 @@ size_t Mycila::PZEM::search(uint8_t* addresses, const size_t maxCount) {
   if (maxCount == 0)
     return 0;
 
-  if (!_mutex.try_lock_for(std::chrono::milliseconds(PZEM_LOCK_TIMEOUT))) {
-    LOGW(TAG, "Unable to search: Serial is busy!");
-    return 0;
-  }
+  std::lock_guard<std::mutex> lock(_mutex);
 
   size_t count = 0;
 
@@ -589,8 +550,6 @@ size_t Mycila::PZEM::search(uint8_t* addresses, const size_t maxCount) {
     }
     yield();
   }
-
-  _mutex.unlock();
 
   return count;
 }
@@ -604,7 +563,7 @@ void Mycila::PZEM::toJson(const JsonObject& root) const {
   root["enabled"] = _enabled;
   root["address"] = _address;
   root["time"] = _time;
-  data.toJson(root);
+  _data.toJson(root);
 }
 #endif
 
