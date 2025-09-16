@@ -375,10 +375,12 @@ void Mycila::PZEM::end() {
     LOGI(TAG, "Disable PZEM @ 0x%02X", _address);
     _enabled = false;
     _remove(this);
+    std::lock_guard<std::mutex> lock(_mutex);
+    _serial->end();
+    _serial = nullptr;
     _lastAddress = MYCILA_PZEM_ADDRESS_UNKNOWN;
     _address = MYCILA_PZEM_ADDRESS_GENERAL;
     _data.clear();
-    _serial->end();
   }
 }
 
