@@ -142,6 +142,9 @@ namespace Mycila {
 
       ~PZEM() { end(); }
 
+      // If the same Serial instance is used by multiple PZEM instances, set shared to true
+      void setSharedSerial(bool shared) { _sharedSerial = shared; }
+
       // - rxPin: RX pin of the board, connected to the TX of the PZEM,
       // - txPin: TX pin of the board, connected to the RX of the PZEM
       // - address: the address of the PZEM. Default to MYCILA_PZEM_DEFAULT_ADDRESS. Set to a value between 0x01 and 0xF7 included, or MYCILA_PZEM_DEFAULT_ADDRESS (default)
@@ -206,6 +209,7 @@ namespace Mycila {
 
     private:
       bool _enabled = false;
+      bool _sharedSerial = false;
       Callback _callback = nullptr;
       gpio_num_t _pinRX = GPIO_NUM_NC;
       gpio_num_t _pinTX = GPIO_NUM_NC;
@@ -231,6 +235,7 @@ namespace Mycila {
       void _send(uint8_t address, uint8_t cmd, uint16_t rAddr, uint16_t val);
       void _openSerial(const uint8_t rxPin, const uint8_t txPin);
       size_t _drop();
+      static size_t _serialUsers;
 
     private:
       static void _crcSet(uint8_t* buf, uint16_t len);

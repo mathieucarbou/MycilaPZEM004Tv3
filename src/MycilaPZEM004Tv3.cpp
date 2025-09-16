@@ -320,6 +320,7 @@ static const uint16_t crcTable[] PROGMEM = {
 TaskHandle_t Mycila::PZEM::_taskHandle = NULL;
 Mycila::PZEM* Mycila::PZEM::_instances[MYCILA_PZEM_ASYNC_MAX_INSTANCES];
 std::mutex Mycila::PZEM::_mutex;
+size_t Mycila::PZEM::_serialUsers = 0;
 
 void Mycila::PZEM::begin(HardwareSerial& serial,
                          const int8_t rxPin,
@@ -376,7 +377,12 @@ void Mycila::PZEM::end() {
     _enabled = false;
     _remove(this);
     std::lock_guard<std::mutex> lock(_mutex);
-    _serial->end();
+    if (_sharedSerial && _serialUsers)
+      _serialUsers--;
+    if (!_sharedSerial || !_serialUsers) {
+      LOGD(TAG, "Close Serial");
+      _serial->end();
+    }
     _serial = nullptr;
     _lastAddress = MYCILA_PZEM_ADDRESS_UNKNOWN;
     _address = MYCILA_PZEM_ADDRESS_GENERAL;
@@ -677,6 +683,8 @@ size_t Mycila::PZEM::_drop() {
 }
 
 void Mycila::PZEM::_openSerial(const uint8_t rxPin, const uint8_t txPin) {
+  if (_sharedSerial && _serialUsers++)
+    return;
   LOGD(TAG, "openSerial()");
   _serial->begin(PZEM_BAUD_RATE, SERIAL_8N1, rxPin, txPin);
   _serial->setTimeout(PZEM_TIMEOUT);
