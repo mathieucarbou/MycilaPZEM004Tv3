@@ -7,7 +7,7 @@
  * - PZEM004Tv3 #2 connected to Serial1 (RX=14, TX=27)
  */
 #include <Arduino.h>
-#include <MycilaPZEM004Tv3.h>
+#include <MycilaPZEM.h>
 
 Mycila::PZEM pzem;
 

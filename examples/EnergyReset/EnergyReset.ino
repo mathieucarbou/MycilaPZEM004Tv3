@@ -10,7 +10,7 @@
  */
 #include <Arduino.h>
 #include <ArduinoJson.h>
-#include <MycilaPZEM004Tv3.h>
+#include <MycilaPZEM.h>
 
 Mycila::PZEM pzem;
 

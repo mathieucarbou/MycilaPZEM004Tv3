@@ -2,7 +2,7 @@
 /*
  * Copyright (C) 2023-2025 Mathieu Carbou
  */
-#include "MycilaPZEM004Tv3.h"
+#include "MycilaPZEM.h"
 
 #ifdef MYCILA_LOGGER_SUPPORT
   #include <MycilaLogger.h>

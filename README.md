@@ -1,16 +1,16 @@
-# MycilaPZEM004Tv3
+# MycilaPZEM
 
-[![Latest Release](https://img.shields.io/github/release/mathieucarbou/MycilaPZEM004Tv3.svg)](https://GitHub.com/mathieucarbou/MycilaPZEM004Tv3/releases/)
-[![PlatformIO Registry](https://badges.registry.platformio.org/packages/mathieucarbou/library/MycilaPZEM004Tv3.svg)](https://registry.platformio.org/libraries/mathieucarbou/MycilaPZEM004Tv3)
+[![Latest Release](https://img.shields.io/github/release/mathieucarbou/MycilaPZEM.svg)](https://GitHub.com/mathieucarbou/MycilaPZEM/releases/)
+[![PlatformIO Registry](https://badges.registry.platformio.org/packages/mathieucarbou/library/MycilaPZEM.svg)](https://registry.platformio.org/libraries/mathieucarbou/MycilaPZEM)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](code_of_conduct.md)
 
-[![Build](https://github.com/mathieucarbou/MycilaPZEM004Tv3/actions/workflows/ci.yml/badge.svg)](https://github.com/mathieucarbou/MycilaPZEM004Tv3/actions/workflows/ci.yml)
-[![GitHub latest commit](https://badgen.net/github/last-commit/mathieucarbou/MycilaPZEM004Tv3)](https://GitHub.com/mathieucarbou/MycilaPZEM004Tv3/commit/)
-[![Gitpod Ready-to-Code](https://img.shields.io/badge/Gitpod-Ready--to--Code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/mathieucarbou/MycilaPZEM004Tv3)
+[![Build](https://github.com/mathieucarbou/MycilaPZEM/actions/workflows/ci.yml/badge.svg)](https://github.com/mathieucarbou/MycilaPZEM/actions/workflows/ci.yml)
+[![GitHub latest commit](https://badgen.net/github/last-commit/mathieucarbou/MycilaPZEM)](https://GitHub.com/mathieucarbou/MycilaPZEM/commit/)
+[![Gitpod Ready-to-Code](https://img.shields.io/badge/Gitpod-Ready--to--Code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/mathieucarbou/MycilaPZEM)
 
-Arduino / ESP32 library for the PZEM-004T v3 Power and Energy monitor
+Arduino / ESP32 library for the PZEM-004T v3 and v4 Power and Energy monitor
 
 Please read this good article first:
 
@@ -22,11 +22,11 @@ And also have a look at this inspiring and well documented GitHub project:
 
 This project is an adaptation of the project above, focusing only on ESP32 and add support for async reading and async energy reset.
 
-- **Support multiple PZEM-004T v3 devices on the same RX/TX port**
-- Support reading and setting addresses of PZEM-004T v3 devices
+- **Support multiple PZEM-004T v3 and v4 devices on the same RX/TX port**
+- Support reading and setting addresses of PZEM devices
 - Blocking and non-blocking mode
 - Core, stack size, priority and read timeout can be configured
-- Automatically detect / search for PZEM-004T v3 devices
+- Automatically detect / search for PZEM devices
 - Energy reset live at runtime, in both async and normal mode
 - Focus on speed and reactivity with a callback mechanism
 - Available metrics:
@@ -172,13 +172,13 @@ If you need it, please add this compilation flag to activate it: `-D MYCILA_JSON
 #include <ArduinoJson.h>
 ```
 
-### Multiple PZEM-004T v3 devices on the same RX/TX port
+### Multiple PZEM devices on the same RX/TX port
 
-1. Connect the first PZEM-004T v3 to the RX/TX port of the ESP32
-2. Restart and set the address of the first PZEM-004T v3 (you can use the `SetAddress.ino` file)
-3. Disconnect the first PZEM-004T v3 and connect the second one instead
+1. Connect the first PZEM-004T to the RX/TX port of the ESP32
+2. Restart and set the address of the first PZEM-004T (you can use the `SetAddress.ino` file)
+3. Disconnect the first PZEM-004T and connect the second one instead
 4. Restart and set the address of the second PZEM-004T v3
-5. Connect both PZEM-004T v3 to the RX/TX port of the ESP32
+5. Connect both PZEM-004T to the RX/TX port of the ESP32
 6. Restart and use both with their own address
 
 ### Callbacks
@@ -332,6 +332,6 @@ Te PZEM might use a sort of moving average over a window of about 2 seconds with
 
 ## Reference material
 
-- [PZEM-004T-V3.0-Datasheet-User-Manual.pdf](https://mathieu.carbou.me/MycilaPZEM004Tv3/PZEM-004T-V3.0-Datasheet-User-Manual.pdf)
+- [PZEM-004T-V3.0-Datasheet-User-Manual.pdf](https://mathieu.carbou.me/MycilaPZEM/PZEM-004T-V3.0-Datasheet-User-Manual.pdf)
 - [PZEM-004T V3](https://innovatorsguru.com/pzem-004t-v3/)
 - [mandulaj/PZEM-004T-v30](https://github.com/mandulaj/PZEM-004T-v30)

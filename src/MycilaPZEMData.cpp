@@ -2,7 +2,7 @@
 /*
  * Copyright (C) 2023-2025 Mathieu Carbou
  */
-#include "MycilaPZEM004Tv3.h"
+#include "MycilaPZEM.h"
 
 static constexpr float DEG_TO_RAD_F = static_cast<float>(DEG_TO_RAD);
 
